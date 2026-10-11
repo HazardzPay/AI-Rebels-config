@@ -15,6 +15,7 @@ CUSTOM_NODES[frameinterp]="https://github.com/Fannovel16/ComfyUI-Frame-Interpola
 CUSTOM_NODES[kjnodes]="https://github.com/kijai/ComfyUI-KJNodes"
 CUSTOM_NODES[res4lyf]="https://github.com/ClownsharkBatwing/RES4LYF"
 CUSTOM_NODES[krea2edit]="https://github.com/lbouaraba/comfyui-krea2edit"
+CUSTOM_NODES[minimaxh3mod]="https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod"
 
 # HF models — key: filename, value: full download URL
 declare -A HF_MODELS

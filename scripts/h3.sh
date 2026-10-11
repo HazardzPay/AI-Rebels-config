@@ -232,6 +232,8 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   # --- custom node installs ---
   clone_node "rgthree" "${CUSTOM_NODES[rgthree]}" "$RGTHREE_NODE_DIR"
   install_node_reqs "rgthree" "$RGTHREE_NODE_DIR"
+  clone_node "MiniMaxH3Mod" "${CUSTOM_NODES[minimaxh3mod]}" "$CUSTOM_NODES_DIR/ComfyUI-MiniMaxH3Mod"
+  install_node_reqs "MiniMaxH3Mod" "$CUSTOM_NODES_DIR/ComfyUI-MiniMaxH3Mod"
   # --- end custom node installs ---
 
   # ComfyUI 0.30.0 renamed comfy/logging.py -> comfy/internal_logging.py.
