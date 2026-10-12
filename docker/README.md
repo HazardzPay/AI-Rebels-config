@@ -1,6 +1,6 @@
 # ComfyUI images
 
-`airebels/comfyui:stablev3` uses `runpod/comfyui:cuda12.8` and installs the
+`hazardzpay/comfyui:stablev3` uses `runpod/comfyui:cuda12.8` and installs the
 ComfyUI release selected by `COMFYUI_VERSION` in `Dockerfile.stablev3`.
 Only ComfyUI is pinned here. Python, CUDA and PyTorch come from RunPod; the
 release's own requirements supply ComfyUI dependencies. The build respects
@@ -16,7 +16,7 @@ simulated outdated workspaces, then pushes that same tested image to Docker Hub.
 Run it manually to rebuild against a newer RunPod base. Relevant Docker files
 also trigger it when pushed to `main`.
 
-In RunPod, set the container image to `airebels/comfyui:stablev3` and keep the
+In RunPod, set the container image to `hazardzpay/comfyui:stablev3` and keep the
 existing `SETUP_SCRIPT_URL` pointing to `scripts/qwenimage21edit.sh`. Models and
 extra custom nodes are downloaded by that setup script at boot.
 

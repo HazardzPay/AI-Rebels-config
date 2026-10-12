@@ -40,11 +40,11 @@ jobs:
           file: ./docker/Dockerfile.stablev3
           pull: true
           load: true
-          tags: airebels/comfyui:stablev3
+          tags: hazardzpay/comfyui:stablev3
 
       - name: Verify fresh and existing workspace startup and Qwen core nodes
         timeout-minutes: 15
-        run: bash docker/test-stablev3.sh airebels/comfyui:stablev3
+        run: bash docker/test-stablev3.sh hazardzpay/comfyui:stablev3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -53,4 +53,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Publish the tested image
-        run: docker push airebels/comfyui:stablev3
+        run: docker push hazardzpay/comfyui:stablev3
