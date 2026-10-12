@@ -11,6 +11,7 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
 
   COMFY_ROOT="/workspace/runpod-slim/ComfyUI"
   CUSTOM_NODES_DIR="$COMFY_ROOT/custom_nodes"
+  PROMPTBATCHER_NODE_DIR="$CUSTOM_NODES_DIR/ComfyUI-Simple-Prompt-Batcher"
   RGTHREE_NODE_DIR="$CUSTOM_NODES_DIR/rgthree-comfy"
   RES4LYF_NODE_DIR="$CUSTOM_NODES_DIR/RES4LYF"
   KREA2EDIT_NODE_DIR="$CUSTOM_NODES_DIR/comfyui-krea2edit"
@@ -251,6 +252,8 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   fi
 
   # --- custom node installs ---
+  clone_node "promptbatcher" "${CUSTOM_NODES[promptbatcher]}" "$PROMPTBATCHER_NODE_DIR"
+  install_node_reqs "promptbatcher" "$PROMPTBATCHER_NODE_DIR"
   clone_node "rgthree" "${CUSTOM_NODES[rgthree]}" "$RGTHREE_NODE_DIR"
   install_node_reqs "rgthree" "$RGTHREE_NODE_DIR"
   clone_node "res4lyf" "${CUSTOM_NODES[res4lyf]}" "$RES4LYF_NODE_DIR" "example_workflows" "workflows"
