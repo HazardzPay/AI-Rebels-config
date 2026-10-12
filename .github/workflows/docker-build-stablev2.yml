@@ -32,4 +32,4 @@ jobs:
           context: .
           file: ./docker/Dockerfile.stablev2
           push: true
-          tags: airebels/comfyui:stablev2
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/comfyui:stablev2
