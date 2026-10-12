@@ -78,6 +78,28 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
     return 1
   }
 
+  # CivitAI serves via its own API endpoint, so `hf download` can't read these URLs.
+  # curl -L follows the redirect to the actual blob; CIVITAI_TOKEN is optional but
+  # avoids anonymous rate-limiting.
+  download_civitai_file() {
+    local filename="$1" url="$2" dest_dir="$3"
+    local attempt rc
+    mkdir -p "$dest_dir"
+    for attempt in 1 2 3; do
+      echo "Downloading (civitai): $filename (attempt $attempt/3, $DOWNLOAD_LIMIT_DESC)"
+      rc=0
+      $DL_TIMEOUT_CMD curl -fL --retry 3 --retry-delay 5 \
+        ${CIVITAI_TOKEN:+-H "Authorization: Bearer $CIVITAI_TOKEN"} \
+        "$url" -o "$dest_dir/$filename" || rc=$?
+      if [ "$rc" -eq 0 ]; then
+        echo "Finished: $filename (attempt $attempt/3)."
+        return 0
+      fi
+      echo "Download of $filename FAILED, curl exit $rc (attempt $attempt/3)."
+    done
+    return 1
+  }
+
   echo "-------------------------------------------------------"
   echo "BACKGROUND WATCHER STARTED: KREA2 V2 CONFIG"
   echo "-------------------------------------------------------"
@@ -270,6 +292,13 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
     "${HF_MODELS[qwen_image_vae.safetensors]}|$MODELS_DIR/vae"
   )
 
+  # CivitAI LoRAs — filename only; URLs come from ${CIVITAI_LORAS[filename]} in registry.sh.
+  CIVITAI_QUEUE=(
+    "HMBreasts_krea2_epoch12.safetensors"
+    "kodak.safetensors"
+    "ultra_real_krea2_v2.safetensors"
+  )
+
   wait_for_download_batch() {
     local pid failed=0
     for pid in "${DOWNLOAD_PIDS[@]}"; do
@@ -279,7 +308,7 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
     return "$failed"
   }
 
-  echo "Downloading ${#ALL_DOWNLOAD_QUEUE[@]} files (max $MAX_PARALLEL_DOWNLOADS at once)..."
+  echo "Downloading ${#ALL_DOWNLOAD_QUEUE[@]} HF files (max $MAX_PARALLEL_DOWNLOADS at once)..."
   DOWNLOAD_PIDS=()
   for entry in "${ALL_DOWNLOAD_QUEUE[@]}"; do
     download_hf_file "${entry%%|*}" "${entry##*|}" &
@@ -290,6 +319,19 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   done
   if [ "${#DOWNLOAD_PIDS[@]}" -gt 0 ]; then
     wait_for_download_batch || die "one or more model downloads failed"
+  fi
+
+  echo "Downloading ${#CIVITAI_QUEUE[@]} CivitAI LoRA(s) (max $MAX_PARALLEL_DOWNLOADS at once)..."
+  DOWNLOAD_PIDS=()
+  for fn in "${CIVITAI_QUEUE[@]}"; do
+    download_civitai_file "$fn" "${CIVITAI_LORAS[$fn]}" "$MODELS_DIR/loras" &
+    DOWNLOAD_PIDS+=("$!")
+    if [ "${#DOWNLOAD_PIDS[@]}" -ge "$MAX_PARALLEL_DOWNLOADS" ]; then
+      wait_for_download_batch || die "one or more civitai downloads failed"
+    fi
+  done
+  if [ "${#DOWNLOAD_PIDS[@]}" -gt 0 ]; then
+    wait_for_download_batch || die "one or more civitai downloads failed"
   fi
 
   rm -rf "$TMP_DIR"
