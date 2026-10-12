@@ -105,3 +105,10 @@ ORIGINAL[RealisticSnapshotKrea2.safetensors]="https://civitai.red/models/2268008
 ORIGINAL[Wan2.1_VAE_upscale2x_imageonly_real_v1.safetensors]="https://huggingface.co/spacepxl/Wan2.1-VAE-upscale2x/resolve/main/Wan2.1_VAE_upscale2x_imageonly_real_v1.safetensors"
 ORIGINAL[famegrid_spicy_3167060.safetensors]="https://civitai.red/api/download/models/3278885?fileId=3167060"
 ORIGINAL[anal_helper_krea2_loraholic.safetensors]="https://civitai.red/api/download/models/3105253?fileId=2985077"
+
+# CivitAI LoRAs — key: filename, value: direct download URL
+# (CivitAI needs its own fetch — the hf CLI can't read these URLs)
+declare -A CIVITAI_LORAS
+CIVITAI_LORAS[HMBreasts_krea2_epoch12.safetensors]="https://civitai.com/api/download/models/3081828?fileId=2961104"
+CIVITAI_LORAS[kodak.safetensors]="https://civitai.com/api/download/models/3135222?fileId=3015964"
+CIVITAI_LORAS[ultra_real_krea2_v2.safetensors]="https://civitai.com/api/download/models/3182356?fileId=3062944"
