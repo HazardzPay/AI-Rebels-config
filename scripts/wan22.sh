@@ -18,7 +18,7 @@ LOG_FILE="/workspace/wan22-background.log"
   TMP_DIR="/workspace/hf-downloads"
   HEALTH_URL="http://127.0.0.1:8188"
 
-  source <(curl -fsSL "https://raw.githubusercontent.com/samh-ai/AI-Rebels-config/main/registry.sh")
+  source <(curl -fsSL "https://raw.githubusercontent.com/hazardzpay/AI-Rebels-config/main/registry.sh")
 
   export HF_HUB_ENABLE_HF_TRANSFER=1
   export HF_XET_HIGH_PERFORMANCE=1

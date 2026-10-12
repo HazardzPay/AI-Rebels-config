@@ -19,7 +19,7 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   TMP_DIR="/workspace/hf-downloads"
   HEALTH_URL="http://127.0.0.1:8188"
 
-  source <(curl -fsSL "https://raw.githubusercontent.com/samh-ai/AI-Rebels-config/main/registry.sh")
+  source <(curl -fsSL "https://raw.githubusercontent.com/hazardzpay/AI-Rebels-config/main/registry.sh")
 
   # Keep Xet's aggressive internal transfer concurrency, but bound its buffers and run
   # only two model-file downloads at a time. High-performance Xet otherwise permits up

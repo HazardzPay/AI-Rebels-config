@@ -16,7 +16,7 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   TMP_DIR="/workspace/hf-downloads"
   HEALTH_URL="http://127.0.0.1:8188"
 
-  source <(curl -fsSL "https://raw.githubusercontent.com/samh-ai/AI-Rebels-config/main/registry.sh")
+  source <(curl -fsSL "https://raw.githubusercontent.com/hazardzpay/AI-Rebels-config/main/registry.sh")
 
   # Keep Xet's high-performance transfers, but bound its buffers and run no more
   # than two model downloads at once to reduce OOM risk on the 28GB pod.
