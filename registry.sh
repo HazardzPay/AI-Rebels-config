@@ -92,7 +92,7 @@ HF_MODELS[clip_vision_h.safetensors]="https://huggingface.co/Comfy-Org/Wan_2.1_C
 # Original — upstream source URLs for files re-hosted on skhaai/airebels HF for faster download.
 # key: filename (matches the HF_MODELS key), value: the original download URL it was copied from.
 declare -A ORIGINAL
-ORIGINAL[snofs_krea_v1_1.safetensors]="hhttps://civitai.red/models/1972981/snofs-sex-nudes-other-fun-stuff?modelVersionId=3104629"
+ORIGINAL[snofs_krea_v1_1.safetensors]="https://civitai.red/models/1972981/snofs-sex-nudes-other-fun-stuff?modelVersionId=3104629"
 ORIGINAL[MysticXXX_MMH3-V4.safetensors]="https://civitai.red/models/2856467/mmh3-mystic-xxx?modelVersionId=3266628"
 ORIGINAL[hmmasturbation_v2.safetensors]="https://civitai.red/api/download/models/3310312?fileId=3195593"
 ORIGINAL[H3_VBVR_Pro_attn_only.safetensors]="https://civitai.red/api/download/models/3306139?fileId=3191174"
