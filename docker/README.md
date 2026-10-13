@@ -6,6 +6,17 @@ Only ComfyUI is pinned here. Python, CUDA and PyTorch come from RunPod; the
 release's own requirements supply ComfyUI dependencies. The build respects
 RunPod's dependency constraints and fails if its PyTorch packages change.
 
+## Images
+
+- `hazardzpay/comfyui:stablev2` — base for the Krea/Muse and SeedVR templates.
+- `hazardzpay/comfyui:stablev3` — Qwen Image 2.1 Edit.
+
+`docker/Dockerfile` and `docker/Dockerfile.cuda13` are LEGACY: no workflow builds
+them. Both originally tagged `airebels/comfyui:*` (the upstream namespace) and
+their workflows were removed so a `docker/boot.sh` edit can't trigger a stray push.
+
+`docker/boot.sh` is shared by both live images — treat edits to it carefully.
+
 The build replaces `/opt/comfyui-baked` core files and updates the RunPod bundle
 marker. The inherited `/start.sh` copies this into a fresh workspace, or syncs
 core into an existing workspace while preserving models and user data.
