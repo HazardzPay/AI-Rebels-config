@@ -6,7 +6,9 @@ model: haiku
 ---
 
 This is the folder structure: /workspace/runpod-slim/ComfyUI/
-use this as placholder civitai token for the final output: 50d1daceac946e23d3806893a8b7e46c
+CivitAI token: use your own (RunPod secret `civitai_token`). The value below was
+the upstream author's and may be stale:
+50d1daceac946e23d3806893a8b7e46c
 
 ## Output rules
 
