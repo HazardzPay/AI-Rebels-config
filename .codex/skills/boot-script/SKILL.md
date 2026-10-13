@@ -3,6 +3,24 @@ name: boot-script
 description: Create or update a ComfyUI RunPod setup script in this repository. Use for new pod scripts and for adding, replacing, or removing registered models or custom nodes.
 ---
 
+## CURRENT PRACTICE — supersedes the template below
+
+Canonical reference: `scripts/krea2v2.sh` (and `scripts/krea2v2-seedvr2.sh`).
+The Step 3 template is the ORIGINAL from the upstream fork and is out of date.
+Match these deltas instead:
+
+- `timeout --kill-after=<grace> <sec>` on every clone and download (plain `timeout`
+  alone does not cap a SIGTERM-ignoring child).
+- `die()` fail-fast helper + 2-3 attempt retry loops around clones and downloads.
+- Sparse clone via `--filter=blob:none` with per-repo exclude lists for large
+  example/doc dirs.
+- `COMFY_PY` auto-detected from the running `main.py` process, not hardcoded.
+- `--enable-cors-header` appended to `/workspace/runpod-slim/comfyui_args.txt`.
+- `hf_transfer` + Xet buffer caps, with `MAX_PARALLEL_DOWNLOADS` gating concurrency.
+- `LOG_FILE` falls back to `/dev/null` if `/workspace` is not mounted.
+- CivitAI downloads use `curl -fL` with an `Authorization: Bearer` header (never a
+  token in the URL), sourced from `CIVITAI_LORAS` in `registry.sh`.
+
 # Boot script
 
 Work only with scripts in `scripts/` and the catalog in `registry.sh`.
