@@ -1,4 +1,5 @@
 #!/bin/bash
+# LEGACY — superseded by krea2v2.sh, which is what the live templates use. Kept for reference.
 set -euo pipefail
 
 LOG_FILE="/workspace/krea2-background.log"
