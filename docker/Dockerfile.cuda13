@@ -1,3 +1,5 @@
+# LEGACY — no workflow builds this. Superseded by Dockerfile.stablev2 / Dockerfile.stablev3.
+
 FROM runpod/comfyui:cuda13.0
 
 USER root
