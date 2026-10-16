@@ -17,6 +17,10 @@ CUSTOM_NODES[res4lyf]="https://github.com/ClownsharkBatwing/RES4LYF"
 CUSTOM_NODES[krea2edit]="https://github.com/lbouaraba/comfyui-krea2edit"
 CUSTOM_NODES[minimaxh3mod]="https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod"
 CUSTOM_NODES[promptbatcher]="https://github.com/ai-joe-git/ComfyUI-Simple-Prompt-Batcher"
+CUSTOM_NODES[kreareason]="https://github.com/shootthesound/ComfyUI-KreaReason"
+CUSTOM_NODES[krea2nag]="https://github.com/iljung1106/ComfyUI-Krea2-NAG"
+CUSTOM_NODES[negpip]="https://github.com/blue-pen5805/ComfyUI-krea2-negpip"
+CUSTOM_NODES[nag]="https://github.com/ChenDarYen/ComfyUI-NAG"
 
 # HF models — key: filename, value: full download URL
 declare -A HF_MODELS
@@ -75,6 +79,7 @@ HF_MODELS[qwen_3_4b.safetensors]="https://huggingface.co/Comfy-Org/z_image_turbo
 HF_MODELS[qwen_3_8b_fp8mixed.safetensors]="https://huggingface.co/Comfy-Org/vae-text-encorder-for-flux-klein-9b/resolve/main/split_files/text_encoders/qwen_3_8b_fp8mixed.safetensors"
 HF_MODELS[qwen3vl_4b_fp8_scaled.safetensors]="https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors"
 HF_MODELS[qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors]="https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+HF_MODELS[qwen3vl_4b_heretic_fp8_e4m3fn.safetensors]="https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/qwen3-vl-4b-heretic_fp8_e4m3fn.safetensors"
 
 # VAE
 HF_MODELS[qwen_image_2.1_vae_bf16.safetensors]="https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors"
@@ -113,3 +118,4 @@ declare -A CIVITAI_LORAS
 CIVITAI_LORAS[HMBreasts_krea2_epoch12.safetensors]="https://civitai.com/api/download/models/3081828?fileId=2961104"
 CIVITAI_LORAS[kodak.safetensors]="https://civitai.com/api/download/models/3135222?fileId=3015964"
 CIVITAI_LORAS[ultra_real_krea2_v2.safetensors]="https://civitai.com/api/download/models/3182356?fileId=3062944"
+CIVITAI_LORAS[realistic_custom_face_krea2.safetensors]="https://civitai.com/api/download/models/3293437?fileId=3178040"
