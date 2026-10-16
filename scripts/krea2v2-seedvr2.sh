@@ -266,14 +266,21 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   install_node_reqs "promptbatcher" "$PROMPTBATCHER_NODE_DIR"
   clone_node "rgthree" "${CUSTOM_NODES[rgthree]}" "$RGTHREE_NODE_DIR"
   install_node_reqs "rgthree" "$RGTHREE_NODE_DIR"
-  # rgthree's recursive-execution patch calls execution.recursive_output_delete_if_changed,
-  # which ComfyUI 0.30.0 removed. The import then fails and all 17 rgthree nodes vanish,
-  # Power Lora Loader among them. Set both configs so the flag holds whichever one wins -
-  # the user config may be defeated by a migration routine that deletes the key on read.
+  # rgthree's remote HEAD points at refs/heads/dev, which sits at 5f940dd (2023-11-20) and
+  # still carries a recursive-execution patch calling execution.recursive_output_delete_if_changed
+  # - removed in ComfyUI 0.30.0. That patch sits outside the config guard, so the flag below
+  # cannot reach it: the import fails and all 17 rgthree nodes vanish, Power Lora Loader among
+  # them. 'main' is current and drops the patch entirely. Do NOT trust the default branch -
+  # it has already flipped once between sessions. Fetch and check out main explicitly.
+  git -C "$RGTHREE_NODE_DIR" fetch --quiet origin main
+  git -C "$RGTHREE_NODE_DIR" checkout --quiet -B main FETCH_HEAD
+  # Belt-and-braces: inert on main, load-bearing if the checkout above ever lands on dev.
+  # Set both configs - the user config may be defeated by a migration routine that
+  # deletes the key on read, so the default has to carry it too.
   sed -i 's/"patch_recursive_execution": true/"patch_recursive_execution": false/' "$RGTHREE_NODE_DIR/rgthree_config.json.default"
   printf '{\n  "patch_recursive_execution": false\n}\n' > "$RGTHREE_NODE_DIR/rgthree_config.json"
-  echo "rgthree: recursive-execution patch disabled (incompatible with ComfyUI 0.30.0)."
-  echo "rgthree pinned at $(git -C "$RGTHREE_NODE_DIR" log -1 --format='%h %ci')"
+  echo "rgthree: checked out main - default branch dev is stale and breaks ComfyUI 0.30.0."
+  echo "rgthree at $(git -C "$RGTHREE_NODE_DIR" log -1 --format='%h %ci')"
   clone_node "res4lyf" "${CUSTOM_NODES[res4lyf]}" "$RES4LYF_NODE_DIR" "example_workflows" "workflows"
   install_node_reqs "res4lyf" "$RES4LYF_NODE_DIR"
   clone_node "krea2edit" "${CUSTOM_NODES[krea2edit]}" "$KREA2EDIT_NODE_DIR"
