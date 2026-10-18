@@ -20,7 +20,8 @@ CUSTOM_NODES[promptbatcher]="https://github.com/ai-joe-git/ComfyUI-Simple-Prompt
 CUSTOM_NODES[kreareason]="https://github.com/shootthesound/ComfyUI-KreaReason"
 CUSTOM_NODES[krea2nag]="https://github.com/iljung1106/ComfyUI-Krea2-NAG"
 CUSTOM_NODES[negpip]="https://github.com/blue-pen5805/ComfyUI-krea2-negpip"
-CUSTOM_NODES[nag]="https://github.com/ChenDarYen/ComfyUI-NAG"
+CUSTOM_NODES[twostagesampler]="https://github.com/Auryg/Krea-2-Two-Stage-Sampler"
+CUSTOM_NODES[sesquilsr]="https://github.com/LoganBooker/SesquiLSR"
 
 # HF models — key: filename, value: full download URL
 declare -A HF_MODELS
@@ -34,6 +35,7 @@ HF_MODELS[flux-2-klein-9b-fp8.safetensors]="https://huggingface.co/black-forest-
 HF_MODELS[seedvr2_ema_7b_fp16.safetensors]="https://huggingface.co/numz/SeedVR2_comfyUI/resolve/main/seedvr2_ema_7b_fp16.safetensors"
 HF_MODELS[darkBeastINT8Convrot2_darkBeastKREA2FP8.safetensors]="https://huggingface.co/skhaai/airebels/resolve/main/models/darkBeastINT8Convrot2_darkBeastKREA2FP8.safetensors"
 HF_MODELS[krea2_turbo_fp8_scaled.safetensors]="https://huggingface.co/Comfy-Org/Krea-2/resolve/main/diffusion_models/krea2_turbo_fp8_scaled.safetensors"
+HF_MODELS[krea2_raw_fp8_scaled.safetensors]="https://huggingface.co/Comfy-Org/Krea-2/resolve/main/diffusion_models/krea2_raw_fp8_scaled.safetensors"
 HF_MODELS[minimax_h3_fl2va_pruned_int8_convrot.safetensors]="https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors"
 HF_MODELS[minimax_h3_ref2va_pruned_int8_convrot.safetensors]="https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors"
 HF_MODELS[museByStableYogi_v35Int8Extended.safetensors]="https://huggingface.co/skhaai/airebels/resolve/main/models/museByStableYogi_v35Int8Extended.safetensors"
@@ -119,3 +121,5 @@ CIVITAI_LORAS[HMBreasts_krea2_epoch12.safetensors]="https://civitai.com/api/down
 CIVITAI_LORAS[kodak.safetensors]="https://civitai.com/api/download/models/3135222?fileId=3015964"
 CIVITAI_LORAS[ultra_real_krea2_v2.safetensors]="https://civitai.com/api/download/models/3182356?fileId=3062944"
 CIVITAI_LORAS[realistic_custom_face_krea2.safetensors]="https://civitai.com/api/download/models/3293437?fileId=3178040"
+CIVITAI_LORAS[krea2_raw_to_turbo_r256_comfy.safetensors]="https://civitai.com/api/download/models/3066079?fileId=2944898"
+CIVITAI_LORAS[snofs_krea_v1_5.safetensors]="https://civitai.com/api/download/models/3390681?fileId=3280058"
