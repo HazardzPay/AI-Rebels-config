@@ -24,7 +24,8 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   KREAREASON_NODE_DIR="$CUSTOM_NODES_DIR/ComfyUI-KreaReason"
   KREA2NAG_NODE_DIR="$CUSTOM_NODES_DIR/ComfyUI-Krea2-NAG"
   NEGPIP_NODE_DIR="$CUSTOM_NODES_DIR/ComfyUI-krea2-negpip"
-  NAG_NODE_DIR="$CUSTOM_NODES_DIR/ComfyUI-NAG"
+  TWOSTAGE_NODE_DIR="$CUSTOM_NODES_DIR/Krea-2-Two-Stage-Sampler"
+  SESQUILSR_NODE_DIR="$CUSTOM_NODES_DIR/SesquiLSR"
   MODELS_DIR="$COMFY_ROOT/models"
   SEEDVR2_MODELS_DIR="$COMFY_ROOT/models/SEEDVR2"
   TMP_DIR="/workspace/hf-downloads"
@@ -297,8 +298,10 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   install_node_reqs "krea2nag" "$KREA2NAG_NODE_DIR"
   clone_node "negpip" "${CUSTOM_NODES[negpip]}" "$NEGPIP_NODE_DIR"
   install_node_reqs "negpip" "$NEGPIP_NODE_DIR"
-  clone_node "nag" "${CUSTOM_NODES[nag]}" "$NAG_NODE_DIR"
-  install_node_reqs "nag" "$NAG_NODE_DIR"
+  clone_node "twostagesampler" "${CUSTOM_NODES[twostagesampler]}" "$TWOSTAGE_NODE_DIR" "example_workflows" "images"
+  install_node_reqs "twostagesampler" "$TWOSTAGE_NODE_DIR"
+  clone_node "sesquilsr" "${CUSTOM_NODES[sesquilsr]}" "$SESQUILSR_NODE_DIR"
+  install_node_reqs "sesquilsr" "$SESQUILSR_NODE_DIR"
   # --- end custom node installs ---
 
   # ComfyUI 0.30.0 renamed comfy/logging.py -> comfy/internal_logging.py.
@@ -317,6 +320,7 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   # retains high-performance Xet behavior while its memory use is capped above.
   ALL_DOWNLOAD_QUEUE=(
     "${HF_MODELS[krea2_turbo_fp8_scaled.safetensors]}|$MODELS_DIR/diffusion_models"
+    "${HF_MODELS[krea2_raw_fp8_scaled.safetensors]}|$MODELS_DIR/diffusion_models"
     "${HF_MODELS[museByStableYogi_v35Int8Extended.safetensors]}|$MODELS_DIR/diffusion_models"
     "${HF_MODELS[qwen3vl_4b_fp8_scaled.safetensors]}|$MODELS_DIR/text_encoders"
     "${HF_MODELS[realism_engine_krea2_v2.safetensors]}|$MODELS_DIR/loras"
@@ -341,6 +345,8 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
     "kodak.safetensors"
     "ultra_real_krea2_v2.safetensors"
     "realistic_custom_face_krea2.safetensors"
+    "krea2_raw_to_turbo_r256_comfy.safetensors"
+    "snofs_krea_v1_5.safetensors"
   )
 
   wait_for_download_batch() {
