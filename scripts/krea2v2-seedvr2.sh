@@ -43,6 +43,8 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   export HF_XET_RECONSTRUCTION_DOWNLOAD_BUFFER_LIMIT=4gb
   export HF_HUB_DOWNLOAD_TIMEOUT=60
   MAX_PARALLEL_DOWNLOADS=2
+  export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+  export PYTORCH_ALLOC_CONF=expandable_segments:True
 
   # Belt-and-suspenders even with xet disabled: HF_HUB_DOWNLOAD_TIMEOUT only bounds the
   # HTTP read timeout, not the whole `hf download` process, so a stuck download could still
