@@ -25,7 +25,6 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   KREA2NAG_NODE_DIR="$CUSTOM_NODES_DIR/ComfyUI-Krea2-NAG"
   NEGPIP_NODE_DIR="$CUSTOM_NODES_DIR/ComfyUI-krea2-negpip"
   TWOSTAGE_NODE_DIR="$CUSTOM_NODES_DIR/Krea-2-Two-Stage-Sampler"
-  SESQUILSR_NODE_DIR="$CUSTOM_NODES_DIR/SesquiLSR"
   MODELS_DIR="$COMFY_ROOT/models"
   SEEDVR2_MODELS_DIR="$COMFY_ROOT/models/SEEDVR2"
   TMP_DIR="/workspace/hf-downloads"
@@ -302,8 +301,6 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   install_node_reqs "negpip" "$NEGPIP_NODE_DIR"
   clone_node "twostagesampler" "${CUSTOM_NODES[twostagesampler]}" "$TWOSTAGE_NODE_DIR" "example_workflows" "images"
   install_node_reqs "twostagesampler" "$TWOSTAGE_NODE_DIR"
-  clone_node "sesquilsr" "${CUSTOM_NODES[sesquilsr]}" "$SESQUILSR_NODE_DIR"
-  install_node_reqs "sesquilsr" "$SESQUILSR_NODE_DIR"
   # --- end custom node installs ---
 
   # ComfyUI 0.30.0 renamed comfy/logging.py -> comfy/internal_logging.py.
