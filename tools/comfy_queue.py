@@ -70,6 +70,11 @@ import zipfile
 RUNNER_SHA = hashlib.sha256(open(os.path.abspath(__file__), "rb").read()).hexdigest()[:12]
 
 
+# RunPod's proxy sits behind Cloudflare, which rejects Python's default urllib signature with
+# HTTP 403 "error code: 1010". Any ordinary User-Agent passes.
+UA = "Mozilla/5.0 (compatible; comfy_queue/1.0)"
+
+
 def die(msg):
     print(f"ERROR: {msg}", file=sys.stderr)
     sys.exit(1)
@@ -77,8 +82,10 @@ def die(msg):
 
 def http(server, path, payload=None, timeout=30):
     data = json.dumps(payload).encode() if payload is not None else None
-    req = urllib.request.Request(server + path, data=data,
-                                 headers={"Content-Type": "application/json"} if data else {})
+    headers = {"User-Agent": UA}
+    if data:
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(server + path, data=data, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read() or b"{}")
@@ -170,7 +177,8 @@ def fetch(server, rel, dest_root, timeout=300):
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     for attempt in (1, 2, 3):
         try:
-            with urllib.request.urlopen(f"{server}/view?{q}", timeout=timeout) as r, open(dest + ".part", "wb") as f:
+            with urllib.request.urlopen(urllib.request.Request(f"{server}/view?{q}", headers={"User-Agent": UA}),
+                                        timeout=timeout) as r, open(dest + ".part", "wb") as f:
                 while True:
                     chunk = r.read(1 << 20)
                     if not chunk:
