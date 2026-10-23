@@ -35,12 +35,12 @@ Behaviour:
   positive/negative inputs point at, KreaDualResolutionSelector, Power Lora Loader (rgthree)
   and SaveImage. The positive text is written straight into the encoder, so any batcher
   feeding it is cut out of the graph.
-- Warm-up: before the first run, and before any run whose LoRA state differs from the run
-  before it, one discarded render is queued (saved under NAME/_warmup/). It uses the measured
-  run's seed and settings with " Warmup." appended to the prompt, so it is not served from
-  cache and no measured run follows a seed change. Suspected cause, unconfirmed (TESTS,
-  2026-10-23): the first render after a seed change takes a different path. The first version
-  used seed+1000 and reproduced the anomaly. --no-warmup skips it.
+- Warm-up: before the first run, and before any run whose LoRA state or seed differs from
+  the run before it, one discarded render is queued (saved under NAME/_warmup/). It uses the
+  measured run's seed and settings with " Warmup." appended to the prompt, so it is not served
+  from cache and no measured run is the first render after a seed change. Confirmed
+  2026-10-23 (TESTS): that first render comes out in a different scene from later renders of
+  the identical job. Mechanism unknown. --no-warmup skips it.
 - A run whose render settings match an earlier one (filename aside) gets a NOTE: ComfyUI
   reuses its cached image and saves a copy, so it is not an independent render.
 - Upscaling is whatever the exported workflow had: a muted SeedVR2 branch is absent from an
@@ -222,7 +222,9 @@ def main():
                 print(f"NOTE {r['label']}: same render settings as {seen[key]}; ComfyUI will save a copy "
                       f"of the cached image, not a new render")
             seen.setdefault(key, r["label"])
-            state = lora_state(wf, ids)
+            # Warm up on any change of LoRA state or seed: the first render after a seed change
+            # was confirmed to render a different scene (TESTS, 2026-10-23).
+            state = (lora_state(wf, ids), r["seed"])
             if state != last_state and not a.no_warmup:
                 # Same seed as the measured run, one extra word so it is not served from cache.
                 # A seed change before a measured run is itself suspected of causing the anomaly.
