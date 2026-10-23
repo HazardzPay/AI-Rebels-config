@@ -10,6 +10,9 @@ Usage (on the pod):
     python3 comfy_queue.py TEST.json --dry-run     # print runs and word counts, queue nothing
     python3 comfy_queue.py TEST.json               # queue every run, wait for each
     python3 comfy_queue.py TEST.json --zip         # ...then zip images + index for download
+    # off the pod: queue through RunPod's proxy and download every image as it finishes
+    python3 comfy_queue.py TEST.json --server https://PODID-8188.proxy.runpod.net \
+        --output-dir ~/results --fetch
 
 TEST.json (keep it next to the API-format workflow export it names):
 {
@@ -56,6 +59,7 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 import hashlib
@@ -158,6 +162,28 @@ def lora_state(wf, ids):
                         for k, v in pl.items() if k.startswith("lora_") and isinstance(v, dict)))
 
 
+def fetch(server, rel, dest_root, timeout=300):
+    """Download one output image through ComfyUI's /view endpoint into dest_root/rel."""
+    sub, fn = os.path.split(rel)
+    q = urllib.parse.urlencode({"filename": fn, "subfolder": sub, "type": "output"})
+    dest = os.path.join(dest_root, rel)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    for attempt in (1, 2, 3):
+        try:
+            with urllib.request.urlopen(f"{server}/view?{q}", timeout=timeout) as r, open(dest + ".part", "wb") as f:
+                while True:
+                    chunk = r.read(1 << 20)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+            os.replace(dest + ".part", dest)
+            return
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            print(f"  download of {rel} failed (attempt {attempt}/3): {e}")
+            time.sleep(3)
+    die(f"could not download {rel}")
+
+
 def run_one(server, wf, save_id, timeout):
     pid = http(server, "/prompt", {"prompt": wf, "client_id": str(uuid.uuid4())})["prompt_id"]
     t0 = time.time()
@@ -184,6 +210,9 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--zip", action="store_true")
     ap.add_argument("--no-warmup", action="store_true", help="skip warm-up renders")
+    ap.add_argument("--fetch", action="store_true",
+                    help="download each image through /view into --output-dir (for running off the pod, "
+                         "e.g. --server https://PODID-8188.proxy.runpod.net --output-dir ~/results)")
     ap.add_argument("--timeout", type=int, default=900, help="seconds to wait per render")
     a = ap.parse_args()
 
@@ -242,6 +271,9 @@ def main():
                                       "prompt_id": pid, "seconds": secs}) + "\n")
             last_state = state
             pid, files, secs = run_one(a.server, wf, ids["save"], a.timeout)
+            if a.fetch:
+                for f in files:
+                    fetch(a.server, f, a.output_dir)
             done += 1
             flag = "  (suspiciously fast: cached?)" if secs < 3 else ""
             print(f"[{done}/{len(runs)}] {r['label']}: {secs}s -> {', '.join(files) or 'NO FILE'}{flag}")
