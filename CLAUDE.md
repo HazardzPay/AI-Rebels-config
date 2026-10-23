@@ -30,3 +30,7 @@ since the fork.
 API, one queued job per run, so every PNG's metadata holds its exact prompt. Warm-up render
 after any LoRA-state change; index.jsonl per test; `--dry-run`, `--zip`. Test definitions
 live in the owner's private vault (tests/), not in this public repo. Run it on the pod.
+
+`tools/compare.py` — pairwise pixel-diff matrix, probable-scene-change flags, embedded-prompt
+check and labelled contact/crop sheets for a results folder. Pillow + numpy; runs on the pod
+or locally.

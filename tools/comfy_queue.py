@@ -58,7 +58,12 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+import hashlib
 import zipfile
+
+# First 12 hex of this file's sha256, written into every index line so results can be traced
+# to the exact runner that produced them.
+RUNNER_SHA = hashlib.sha256(open(os.path.abspath(__file__), "rb").read()).hexdigest()[:12]
 
 
 def die(msg):
@@ -200,7 +205,7 @@ def main():
             die(f"sampler {k} input is not a CLIPTextEncode")
 
     runs = [resolve(r, spec.get("defaults", {})) for r in expand_runs(spec)]
-    print(f"{name}: {len(runs)} runs; nodes {ids}")
+    print(f"{name}: {len(runs)} runs; runner {RUNNER_SHA}; nodes {ids}")
     for r in runs:
         print(f"  {r['label']:28s} {len(r['prompt'].split()):4d} words  seed {r['seed']}  "
               f"{r['sampler']}  | {r['prompt'][:70]}...")
@@ -232,7 +237,7 @@ def main():
                 warm = build(base, ids, wr, r["seed"], f"{name}/_warmup/before_{r['label']}")
                 pid, files, secs = run_one(a.server, warm, ids["save"], a.timeout)
                 print(f"  warm-up before {r['label']}: {secs}s")
-                idx.write(json.dumps({"label": f"_warmup_before_{r['label']}", "warmup": True, "files": files,
+                idx.write(json.dumps({"runner": RUNNER_SHA, "label": f"_warmup_before_{r['label']}", "warmup": True, "files": files,
                                       "prompt": wr["prompt"], "seed": r["seed"], "loras": r["loras"],
                                       "prompt_id": pid, "seconds": secs}) + "\n")
             last_state = state
@@ -240,7 +245,7 @@ def main():
             done += 1
             flag = "  (suspiciously fast: cached?)" if secs < 3 else ""
             print(f"[{done}/{len(runs)}] {r['label']}: {secs}s -> {', '.join(files) or 'NO FILE'}{flag}")
-            idx.write(json.dumps({"label": r["label"], "warmup": False, "files": files, "prompt": r["prompt"],
+            idx.write(json.dumps({"runner": RUNNER_SHA, "label": r["label"], "warmup": False, "files": files, "prompt": r["prompt"],
                                   "words": len(r["prompt"].split()), "seed": r["seed"], "sampler": r["sampler"],
                                   "loras": r["loras"], "negative": r["negative"], "prompt_id": pid,
                                   "seconds": secs}) + "\n")
