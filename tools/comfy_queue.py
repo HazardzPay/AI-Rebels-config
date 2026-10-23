@@ -22,7 +22,8 @@ TEST.json (keep it next to the API-format workflow export it names):
     "seed": 42424242,                       # -> KreaDualResolutionSelector.random_seed
     "sampler": {"handoff_percent": 12, "stage2_steps": 16},   # -> KreaTwoStageSampler inputs
     "loras": {"HMBreasts_krea2_epoch12.safetensors": {"on": true, "strength": 0.9}},
-    "negative": ""                          # optional; omitted = leave as exported
+    "negative": "",                         # optional; omitted = leave as exported
+    "selector": {"aspect_ratio": "16:9"}    # optional; KreaDualResolutionSelector inputs
   },
   "grid": {                                 # optional: cartesian product of axes
     "template": "{pose} ... {slot} ...",
@@ -138,6 +139,7 @@ def resolve(run, defaults):
         loras[name] = {**loras.get(name, {}), **cfg}
     r["loras"] = loras
     r["negative"] = run.get("negative", defaults.get("negative"))
+    r["selector"] = {**defaults.get("selector", {}), **run.get("selector", {})}
     return r
 
 
@@ -148,6 +150,10 @@ def build(base, ids, r, seed, prefix):
         wf[ids["neg"]]["inputs"]["text"] = r["negative"]
     if seed is not None:
         wf[ids["sel"]]["inputs"]["random_seed"] = seed
+    for k, v in r.get("selector", {}).items():
+        if k not in wf[ids["sel"]]["inputs"] or k == "random_seed":
+            die(f"KreaDualResolutionSelector: '{k}' is not a settable input (use 'seed' for the seed)")
+        wf[ids["sel"]]["inputs"][k] = v
     for k, v in r["sampler"].items():
         if k not in wf[ids["smp"]]["inputs"]:
             die(f"KreaTwoStageSampler has no input '{k}'")
@@ -287,7 +293,7 @@ def main():
             print(f"[{done}/{len(runs)}] {r['label']}: {secs}s -> {', '.join(files) or 'NO FILE'}{flag}")
             idx.write(json.dumps({"runner": RUNNER_SHA, "label": r["label"], "warmup": False, "files": files, "prompt": r["prompt"],
                                   "words": len(r["prompt"].split()), "seed": r["seed"], "sampler": r["sampler"],
-                                  "loras": r["loras"], "negative": r["negative"], "prompt_id": pid,
+                                  "loras": r["loras"], "selector": r["selector"], "negative": r["negative"], "prompt_id": pid,
                                   "seconds": secs}) + "\n")
             idx.flush()
     print(f"index: {index_path}")
