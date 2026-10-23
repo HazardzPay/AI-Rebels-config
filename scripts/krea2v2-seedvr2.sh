@@ -105,8 +105,8 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   # and then waits for the child - if the child ignores it, timeout blocks forever too).
   # 3 attempts: both download paths resume from partial, so a retry is cheap, not a redo.
   # 1800s, not 600s: real stalls are caught by the heartbeat in ~90s, so this cap is only a
-  # backstop. At 600s a healthy 16GB file on a host doing ~27MB/s per file was cut off
-  # mid-transfer and burned an attempt for nothing.
+  # backstop. At 600s a healthy 16GB file on a host doing ~27MB/s per file would be cut off
+  # mid-transfer and burn an attempt for nothing.
   DOWNLOAD_TIMEOUT=1800
   DOWNLOAD_KILL_GRACE=30
   if command -v timeout >/dev/null 2>&1; then
