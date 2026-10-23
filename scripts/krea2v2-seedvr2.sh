@@ -9,16 +9,17 @@
 # the download scheduler started two files and waited for BOTH, so one slow file idled the
 # other slot for up to a full timeout. v3 changes:
 #   - heartbeat every HEARTBEAT_SECS -> /workspace/BOOT_STATUS (one-command check) + the log
-#   - idle detector: STALL_IDLE_TICKS ticks with <2MB of movement WHILE a download is in
-#     flight prints a NO PROGRESS banner; STALL_AUTOKILL=1 then kills the stalled transfer
+#   - idle detector: STALL_IDLE_TICKS ticks with <2MB received on the network WHILE a
+#     download is in flight prints a NO PROGRESS banner (network, not disk: Xet buffers in
+#     RAM and writes late, so disk growth reads a healthy download as stalled); STALL_AUTOKILL=1 then kills the stalled transfer
 #     and the retry loop resumes it (hf resumes from partial; curl resumes with -C -)
 #   - /workspace/dlstatus.sh written by this script: status, ledger, in-flight, partials, log
 #   - shared download queue (flock'd counter) replaces the batch barrier: a worker pulls the
 #     next item the moment it frees up, so no item ever waits on an unrelated slow one
 #   - downloads start BEFORE the node clones and run alongside them; a clone stall no longer
 #     freezes downloads
-#   - HF_TOKEN passthrough, Xet stream count capped, Xet cache pinned inside the measured
-#     tree, progress bars off (their \r lines collapse under tee into one static line)
+#   - HF_TOKEN passthrough, Xet stream count capped, Xet cache pinned under .boot-state,
+#     progress bars off (their \r lines collapse under tee into one static line)
 #   - per-phase timings printed at the end and on any failure
 #   - CivitAI: per-transfer stall killer (--speed-limit), .part file + resume, so a killed or
 #     interrupted transfer is never mistaken for a finished file
@@ -85,7 +86,7 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   # v3 additions. HF_HUB_ENABLE_HF_TRANSFER is gone: inert on hub 1.x, which takes the Xet
   # path regardless.
   export HF_XET_NUM_CONCURRENT_RANGE_GETS=8   # default 64-128 sockets/process; one stalled stream among that many is invisible
-  export HF_XET_CACHE="$STATE_DIR/xet-cache"  # inside the measured tree, else a healthy download can read as zero growth
+  export HF_XET_CACHE="$STATE_DIR/xet-cache"  # kept out of ~/.cache and removed at the end of the run
   export HF_HUB_DISABLE_PROGRESS_BARS=1       # \r bars collapse under tee into one static line
   # Anonymous HF throttling shows up as a silent sleep - the likeliest cause of the old
   # 0-byte freezes. The hf CLI reads HF_TOKEN from the environment.
@@ -122,12 +123,15 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
       printf '%d KB/s' $(( $1 / 1024 ))
     fi
   }
-  # Only the trees downloads write into. Not all of /workspace: du over the ComfyUI install
-  # every tick is slow on a network volume and measures nothing useful.
-  # du exits non-zero for a missing dir or a file vanishing mid-walk (a .part renamed);
-  # under set -e + pipefail that would silently kill the heartbeat, so it is never fatal.
+  # Progress = bytes received on the pod's network interfaces, NOT disk growth. Measured on
+  # a live pod (2026-10-23): a healthy Xet download ran at 51-58 MB/s on the wire while the
+  # file on disk stayed flat at 104MB and hf's RAM climbed ~57MB/s - Xet buffers in memory
+  # and writes late. A disk-based detector read that as a stall and killed every attempt.
+  # The container has its own network namespace, so this counts only this pod's traffic.
+  # BOOT_NET_DEV is overridable for testing only.
+  BOOT_NET_DEV="${BOOT_NET_DEV:-/proc/net/dev}"
   bytes_now() {
-    { du -sb "$TMP_DIR" "$MODELS_DIR" "$STATE_DIR" 2>/dev/null || true; } | awk '{ s += $1 } END { print s + 0 }'
+    awk 'NR > 2 && $0 !~ /^ *lo:/ { sub(/^[^:]*:/, ""); s += $1 } END { print s + 0 }' "$BOOT_NET_DEV" 2>/dev/null || echo 0
   }
   pool_log() { echo "[$(date +%H:%M:%S)] $*"; }
   phase() {
