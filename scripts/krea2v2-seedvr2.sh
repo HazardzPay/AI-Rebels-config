@@ -104,7 +104,10 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   # as clone_node: wrap in `timeout --kill-after` (plain `timeout N` only sends SIGTERM at N
   # and then waits for the child - if the child ignores it, timeout blocks forever too).
   # 3 attempts: both download paths resume from partial, so a retry is cheap, not a redo.
-  DOWNLOAD_TIMEOUT=600
+  # 1800s, not 600s: real stalls are caught by the heartbeat in ~90s, so this cap is only a
+  # backstop. At 600s a healthy 16GB file on a host doing ~27MB/s per file was cut off
+  # mid-transfer and burned an attempt for nothing.
+  DOWNLOAD_TIMEOUT=1800
   DOWNLOAD_KILL_GRACE=30
   if command -v timeout >/dev/null 2>&1; then
     DL_TIMEOUT_CMD="timeout --kill-after=$DOWNLOAD_KILL_GRACE $DOWNLOAD_TIMEOUT"
@@ -209,9 +212,12 @@ done
 [ "$found" -eq 1 ] || echo "  (nothing)"
 [ -s "$S/clone-now" ] && echo "  cloning: $(cat "$S/clone-now")"
 echo
-echo "==== largest partials ===="
-du -ah /workspace/hf-downloads 2>/dev/null | sort -rh | sed -n '2,6p'
-find /workspace/runpod-slim/ComfyUI/models -name '*.part' -exec du -h {} + 2>/dev/null
+echo "==== partial files (size on disk; Xet buffers in RAM, so this lags the network) ===="
+{ find /workspace/hf-downloads -name '*.incomplete' -exec du -h {} + 2>/dev/null \
+    | sed -E 's#\t/workspace/hf-downloads/([^/]+)/.*#\t\1#'
+  find /workspace/runpod-slim/ComfyUI/models -name '*.part' -exec du -h {} + 2>/dev/null \
+    | sed -E 's#\t.*/([^/]+)\.part$#\t\1 (civitai)#'
+} | sort -rh | sed 's/^/  /'
 echo
 echo "==== log tail ===="
 tail -15 /workspace/krea2v2-seedvr2-background.log 2>/dev/null
