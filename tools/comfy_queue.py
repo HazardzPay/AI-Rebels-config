@@ -36,9 +36,11 @@ Behaviour:
   and SaveImage. The positive text is written straight into the encoder, so any batcher
   feeding it is cut out of the graph.
 - Warm-up: before the first run, and before any run whose LoRA state differs from the run
-  before it, one discarded render with the same settings and seed+1000 is queued (saved under
-  NAME/_warmup/). Guards against the unexplained first-run-after-toggle anomaly (TESTS,
-  2026-10-23). The seed differs so the measured run is not served from ComfyUI's cache.
+  before it, one discarded render is queued (saved under NAME/_warmup/). It uses the measured
+  run's seed and settings with " Warmup." appended to the prompt, so it is not served from
+  cache and no measured run follows a seed change. Suspected cause, unconfirmed (TESTS,
+  2026-10-23): the first render after a seed change takes a different path. The first version
+  used seed+1000 and reproduced the anomaly. --no-warmup skips it.
 - A run whose render settings match an earlier one (filename aside) gets a NOTE: ComfyUI
   reuses its cached image and saves a copy, so it is not an independent render.
 - Upscaling is whatever the exported workflow had: a muted SeedVR2 branch is absent from an
@@ -176,6 +178,7 @@ def main():
     ap.add_argument("--output-dir", default="/workspace/runpod-slim/ComfyUI/output")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--zip", action="store_true")
+    ap.add_argument("--no-warmup", action="store_true", help="skip warm-up renders")
     ap.add_argument("--timeout", type=int, default=900, help="seconds to wait per render")
     a = ap.parse_args()
 
@@ -220,14 +223,17 @@ def main():
                       f"of the cached image, not a new render")
             seen.setdefault(key, r["label"])
             state = lora_state(wf, ids)
-            if state != last_state:
-                warm = build(base, ids, r, (r["seed"] or 0) + 1000, f"{name}/_warmup/before_{r['label']}")
+            if state != last_state and not a.no_warmup:
+                # Same seed as the measured run, one extra word so it is not served from cache.
+                # A seed change before a measured run is itself suspected of causing the anomaly.
+                wr = {**r, "prompt": r["prompt"] + " Warmup."}
+                warm = build(base, ids, wr, r["seed"], f"{name}/_warmup/before_{r['label']}")
                 pid, files, secs = run_one(a.server, warm, ids["save"], a.timeout)
                 print(f"  warm-up before {r['label']}: {secs}s")
                 idx.write(json.dumps({"label": f"_warmup_before_{r['label']}", "warmup": True, "files": files,
-                                      "seed": (r["seed"] or 0) + 1000, "loras": r["loras"],
+                                      "prompt": wr["prompt"], "seed": r["seed"], "loras": r["loras"],
                                       "prompt_id": pid, "seconds": secs}) + "\n")
-                last_state = state
+            last_state = state
             pid, files, secs = run_one(a.server, wf, ids["save"], a.timeout)
             done += 1
             flag = "  (suspiciously fast: cached?)" if secs < 3 else ""
