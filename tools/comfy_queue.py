@@ -175,6 +175,25 @@ def lora_state(wf, ids):
                         for k, v in pl.items() if k.startswith("lora_") and isinstance(v, dict)))
 
 
+def pod_last_state(server):
+    """(lora_state, seed) of the most recent job ComfyUI ran, from /history; None if unknown.
+
+    The first-render-after-seed-change effect depends on what the pod actually ran last, which
+    may be a browser render or an earlier invocation, not just this invocation's previous run.
+    """
+    h = http(server, "/history?max_items=1")
+    for entry in h.values():
+        try:
+            graph = entry["prompt"][2]
+            sel = [n for n in graph.values() if n.get("class_type") == "KreaDualResolutionSelector"]
+            pll = [k for k, n in graph.items() if n.get("class_type") == "Power Lora Loader (rgthree)"]
+            if len(sel) == 1 and len(pll) == 1:
+                return (lora_state(graph, {"pll": pll[0]}), sel[0]["inputs"]["random_seed"])
+        except (KeyError, IndexError, TypeError):
+            pass
+    return None
+
+
 def fetch(server, rel, dest_root, timeout=300):
     """Download one output image through ComfyUI's /view endpoint into dest_root/rel."""
     sub, fn = os.path.split(rel)
@@ -228,6 +247,10 @@ def main():
                     help="download each image through /view into --output-dir (for running off the pod, "
                          "e.g. --server https://PODID-8188.proxy.runpod.net --output-dir ~/results)")
     ap.add_argument("--timeout", type=int, default=900, help="seconds to wait per render")
+    ap.add_argument("--resume", action="store_true",
+                    help="skip runs already recorded in this test's index.jsonl")
+    ap.add_argument("--max-runs", type=int, default=0,
+                    help="stop after this many measured runs (0 = all); use with --resume to run in chunks")
     a = ap.parse_args()
 
     spec = json.load(open(a.definition))
@@ -259,9 +282,24 @@ def main():
     out_dir = os.path.join(a.output_dir, name)
     os.makedirs(out_dir, exist_ok=True)
     index_path = os.path.join(out_dir, "index.jsonl")
-    seen, last_state, done = {}, None, 0
+    done_labels = set()
+    if a.resume and os.path.exists(index_path):
+        for line in open(index_path):
+            d = json.loads(line)
+            if not d.get("warmup"):
+                done_labels.add(d["label"])
+        if done_labels:
+            print(f"resume: {len(done_labels)} run(s) already done")
+    seen, done = {}, 0
+    last_state = None if a.no_warmup else pod_last_state(a.server)
     with open(index_path, "a") as idx:
         for r in runs:
+            if r["label"] in done_labels:
+                continue
+            if a.max_runs and done >= a.max_runs:
+                left = len([x for x in runs if x["label"] not in done_labels]) - done
+                print(f"stopping after {done} run(s) (--max-runs); {left} left - rerun with --resume")
+                break
             wf = build(base, ids, r, r["seed"], f"{name}/{r['label']}")
             # Same render settings, ignoring the filename: ComfyUI reuses its cached image and
             # only the save re-runs, so the file is a copy, not a new render.
