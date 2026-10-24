@@ -378,7 +378,7 @@ DLSTATUS
   }
 
   echo "-------------------------------------------------------"
-  echo "BACKGROUND WATCHER STARTED: KREA2 V2 + SEEDVR2 CONFIG (v3)"
+  echo "BACKGROUND WATCHER STARTED: KREA2 V2 + SEEDVR2 CONFIG (v3.2)"
   echo "-------------------------------------------------------"
   echo "booting" > "$BOOT_STATUS_FILE"
 

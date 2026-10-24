@@ -20,7 +20,7 @@ TEST.json (keep it next to the API-format workflow export it names):
   "workflow": "workflow_api.json",          # API-format export, path relative to TEST.json
   "defaults": {
     "seed": 42424242,                       # -> KreaDualResolutionSelector.random_seed
-    "sampler": {"handoff_percent": 12, "stage2_steps": 16},   # -> KreaTwoStageSampler inputs
+    "sampler": {"handoff_percent": 12, "stage2_steps": 12},   # -> KreaTwoStageSampler inputs
     "loras": {"HMBreasts_krea2_epoch12.safetensors": {"on": true, "strength": 0.9}},
     "negative": "",                         # optional; omitted = leave as exported
     "selector": {"aspect_ratio": "16:9"}    # optional; KreaDualResolutionSelector inputs

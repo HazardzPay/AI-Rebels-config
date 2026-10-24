@@ -28,7 +28,7 @@ since the fork.
 
 `tools/comfy_queue.py` — runs a test definition against a live ComfyUI through its HTTP
 API, one queued job per run, so every PNG's metadata holds its exact prompt. Warm-up render
-after any LoRA-state change; index.jsonl per test; `--dry-run`, `--zip`. Test definitions
+after any LoRA-state or seed change; index.jsonl per test; `--dry-run`, `--zip`, `--resume`, `--max-runs`. Test definitions
 live in the owner's private vault (tests/), not in this public repo. Run it on the pod, or
 remotely with `--server https://PODID-8188.proxy.runpod.net --output-dir DIR --fetch`
 (downloads every image through /view; sends a User-Agent because Cloudflare blocks urllib's).
