@@ -11,6 +11,7 @@ All URLs and git repos live in `registry.sh` — never hardcode them in `.sh` fi
 Live templates and the scripts they point at:
 - Krea2 t2i / Krea2 Muse → `scripts/krea2v2.sh`
 - Integrated gen + upscale → `scripts/krea2v2-seedvr2.sh`
+- Integrated gen + upscale (RAW only, faster boot) → `scripts/krea2raw-seedvr2.sh`
 - SeedVR2 upscale → `scripts/seedvr.sh`
 - Qwen Image 2.1 Edit → `scripts/qwenimage21edit.sh`
 
