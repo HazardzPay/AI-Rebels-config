@@ -21,7 +21,7 @@ CUSTOM_NODES[kreareason]="https://github.com/shootthesound/ComfyUI-KreaReason"
 CUSTOM_NODES[krea2nag]="https://github.com/iljung1106/ComfyUI-Krea2-NAG"
 CUSTOM_NODES[negpip]="https://github.com/blue-pen5805/ComfyUI-krea2-negpip"
 CUSTOM_NODES[twostagesampler]="https://github.com/Auryg/Krea-2-Two-Stage-Sampler"
-CUSTOM_NODES[sesquilsr]="https://github.com/LoganBooker/SesquiLSR"
+# sesquilsr removed: caused repeated hang in git index-pack at pod deploy; bislerp stays.
 
 # HF models — key: filename, value: full download URL
 declare -A HF_MODELS
@@ -107,6 +107,7 @@ ORIGINAL[H3_VBVR_Pro_attn_only.safetensors]="https://civitai.red/api/download/mo
 ORIGINAL[museByStableYogi_v35Int8Extended.safetensors]="https://civitai.red/models/2741166/muse-by-stable-yogi-krea2?modelVersionId=3258954"
 ORIGINAL[K_excessivecum.safetensors]="https://civitai.red/models/2512358?modelVersionId=3221218"
 ORIGINAL[snofs_krea_v1_4.safetensors]="https://civitai.red/models/1972981/snofs-sex-nudes-other-fun-stuff?modelVersionId=3290120"
+# realism_engine_krea2_v2: civitai model 2688234, version ID not recorded — source URL unknown.
 ORIGINAL[realism_engine_krea2_v3.1.safetensors]="https://civitai.red/models/2688234/realism-engine-ideogram-4-krea-2?modelVersionId=3109006"
 ORIGINAL[krea2-bloomgirls-realism-step00004000.safetensors]="https://civitai.red/models/2735553/krea-2-bloomgirls-ultrarealism?modelVersionId=3191538"
 ORIGINAL[RealisticSnapshotKrea2.safetensors]="https://civitai.red/models/2268008/realistic-snapshot-z-image-turbo-krea-2?modelVersionId=3084537"
