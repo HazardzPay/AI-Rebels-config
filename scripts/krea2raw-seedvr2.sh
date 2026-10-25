@@ -266,6 +266,19 @@ DLSTATUS
     done
   }
 
+  # Node requirements install in parallel with the downloads, and one of them upgrades
+  # huggingface_hub: pip deletes and rewrites the `hf` launcher, and a worker that starts
+  # a download in that window gets "failed to run command 'hf'" (exit 127) three times in
+  # a row at 0s and kills the boot. Wait for a working hf before each attempt instead.
+  wait_for_hf() {
+    local i
+    for i in $(seq 1 60); do
+      hf --version >/dev/null 2>&1 && return 0
+      sleep 2
+    done
+    return 1
+  }
+
   download_hf_file() {
     local url="$1"
     local dest_dir="$2"
@@ -281,8 +294,9 @@ DLSTATUS
     mkdir -p "$dest_dir" "$dl_tmp"
     for attempt in 1 2 3; do
       echo "Downloading: $url (attempt $attempt/3, $DOWNLOAD_LIMIT_DESC)"
-      start=$SECONDS
       rc=0
+      wait_for_hf || echo "hf CLI still not runnable after 120s, trying anyway."
+      start=$SECONDS
       $DL_TIMEOUT_CMD hf download "$repo" "$repo_path" --local-dir "$dl_tmp" || rc=$?
       if [ "$rc" -eq 0 ]; then
         mv -f "$dl_tmp/$repo_path" "$dest_dir/$filename"
@@ -292,6 +306,7 @@ DLSTATUS
       case "$rc" in
         124) echo "Download of $filename TIMED OUT after $((SECONDS - start))s (attempt $attempt/3)." ;;
         137) echo "Download of $filename ignored SIGTERM, SIGKILLed after $((SECONDS - start))s (attempt $attempt/3)." ;;
+        127) echo "Download of $filename: hf launcher missing (pip upgrading huggingface_hub?), waiting (attempt $attempt/3)."; sleep 10 ;;
         *)   echo "Download of $filename FAILED, hf exit $rc after $((SECONDS - start))s (attempt $attempt/3)." ;;
       esac
     done
