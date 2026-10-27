@@ -14,6 +14,7 @@ Live templates and the scripts they point at:
 - Integrated gen + upscale (RAW only, faster boot) → `scripts/krea2raw-seedvr2.sh`
 - SeedVR2 upscale → `scripts/seedvr.sh`
 - Qwen Image 2.1 Edit → `scripts/qwenimage21edit.sh`
+- MiniMax H3 image to video → `scripts/h3.sh` (ported to the v3 boot scaffolding 2026-10-27)
 
 Canonical pattern reference: `scripts/krea2v2.sh`. Copy its hardening — retry
 loops, `timeout --kill-after`, `die()`, sparse clone, `COMFY_PY` detection —
@@ -21,6 +22,6 @@ when writing or editing any script. The template in
 `.claude/skills/boot-script/SKILL.md` is superseded; read the CURRENT PRACTICE
 block at the top of that file first.
 
-`scripts/archive/` is not in use. `scripts/h3.sh`, `scripts/wan22.sh` and
+`scripts/archive/` is not in use. `scripts/wan22.sh` and
 `scripts/video-interpolate-upscale.sh` are future video work and are unreviewed
 since the fork.
