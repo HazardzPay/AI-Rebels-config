@@ -23,7 +23,8 @@ TEST.json (keep it next to the API-format workflow export it names):
     "sampler": {"handoff_percent": 12, "stage2_steps": 12},   # -> KreaTwoStageSampler inputs
     "loras": {"HMBreasts_krea2_epoch12.safetensors": {"on": true, "strength": 0.9}},
     "negative": "",                         # optional; omitted = leave as exported
-    "selector": {"aspect_ratio": "16:9"}    # optional; KreaDualResolutionSelector inputs
+    "selector": {"aspect_ratio": "16:9"},   # optional; KreaDualResolutionSelector inputs
+    "nodes": {"203": {"strength_model": 0.7}}  # optional; set inputs on any node by id
   },
   "grid": {                                 # optional: cartesian product of axes
     "template": "{pose} ... {slot} ...",
@@ -49,6 +50,10 @@ Behaviour:
   reuses its cached image and saves a copy, so it is not an independent render.
 - Upscaling is whatever the exported workflow had: a muted SeedVR2 branch is absent from an
   API export, so these runs are pre-upscale unless it was enabled before exporting.
+- "nodes" (defaults or per run, merged per node) sets literal inputs on nodes by id, e.g. the
+  strength of a LoraLoaderModelOnly on the stage 1 (RAW) path, which the Power Lora Loader
+  does not reach. The node and input must already exist in the export (no new links).
+  Node overrides count as LoRA state for the warm-up decision.
 - index.jsonl in the output subfolder records every run: label, files, exact prompt, words,
   seed, sampler settings, LoRA state, warm-up flag, prompt id, seconds.
 """
@@ -140,6 +145,10 @@ def resolve(run, defaults):
     r["loras"] = loras
     r["negative"] = run.get("negative", defaults.get("negative"))
     r["selector"] = {**defaults.get("selector", {}), **run.get("selector", {})}
+    nodes = copy.deepcopy(defaults.get("nodes", {}))
+    for nid, inp in run.get("nodes", {}).items():
+        nodes[nid] = {**nodes.get(nid, {}), **inp}
+    r["nodes"] = nodes
     return r
 
 
@@ -165,6 +174,13 @@ def build(base, ids, r, seed, prefix):
             if name not in slots:
                 die(f"LoRA {name} is not in the exported Power Lora Loader; add it in the UI and re-export")
             pl[slots[name]].update({k: cfg[k] for k in ("on", "strength") if k in cfg})
+    for nid, inp in r.get("nodes", {}).items():
+        if nid not in wf:
+            die(f"node {nid} is not in the exported workflow")
+        for k, v in inp.items():
+            if k not in wf[nid]["inputs"] or isinstance(wf[nid]["inputs"][k], list):
+                die(f"node {nid} ({wf[nid]['class_type']}): '{k}' is not a settable literal input")
+            wf[nid]["inputs"][k] = v
     wf[ids["save"]]["inputs"]["filename_prefix"] = prefix
     return wf
 
@@ -274,7 +290,7 @@ def main():
     print(f"{name}: {len(runs)} runs; runner {RUNNER_SHA}; nodes {ids}")
     for r in runs:
         print(f"  {r['label']:28s} {len(r['prompt'].split()):4d} words  seed {r['seed']}  "
-              f"{r['sampler']}  | {r['prompt'][:70]}...")
+              f"{r['sampler']}{('  nodes ' + json.dumps(r['nodes'])) if r['nodes'] else ''}  | {r['prompt'][:70]}...")
     if a.dry_run:
         print("dry run: nothing queued")
         return
@@ -310,7 +326,7 @@ def main():
             seen.setdefault(key, r["label"])
             # Warm up on any change of LoRA state or seed: the first render after a seed change
             # was confirmed to render a different scene (TESTS, 2026-10-23).
-            state = (lora_state(wf, ids), r["seed"])
+            state = ((lora_state(wf, ids), json.dumps(r["nodes"], sort_keys=True)) if r["nodes"] else lora_state(wf, ids), r["seed"])
             if state != last_state and not a.no_warmup:
                 # Same seed as the measured run, one extra word so it is not served from cache.
                 # A seed change before a measured run is itself suspected of causing the anomaly.
@@ -331,7 +347,7 @@ def main():
             print(f"[{done}/{len(runs)}] {r['label']}: {secs}s -> {', '.join(files) or 'NO FILE'}{flag}")
             idx.write(json.dumps({"runner": RUNNER_SHA, "label": r["label"], "warmup": False, "files": files, "prompt": r["prompt"],
                                   "words": len(r["prompt"].split()), "seed": r["seed"], "sampler": r["sampler"],
-                                  "loras": r["loras"], "selector": r["selector"], "negative": r["negative"], "prompt_id": pid,
+                                  "loras": r["loras"], "nodes": r["nodes"], "selector": r["selector"], "negative": r["negative"], "prompt_id": pid,
                                   "seconds": secs}) + "\n")
             idx.flush()
     print(f"index: {index_path}")

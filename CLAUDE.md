@@ -35,6 +35,14 @@ live in the owner's private vault (tests/), not in this public repo. Run it on t
 remotely with `--server https://PODID-8188.proxy.runpod.net --output-dir DIR --fetch`
 (downloads every image through /view; sends a User-Agent because Cloudflare blocks urllib's).
 
+Per-run `nodes` overrides set literal inputs on any node by id (e.g. stage 1 / RAW-path
+LoraLoaderModelOnly strengths, which the Power Lora Loader does not reach).
+
+`tools/arcface_div.py` — face-identity diversity: mean pairwise ArcFace (insightface buffalo_l)
+cosine similarity between the people in each group of a results folder; lower is more diverse.
+Runs anywhere `pip install insightface onnxruntime opencv-python-headless` works (the model
+downloads from GitHub on first use).
+
 `tools/compare.py` — pairwise pixel-diff matrix, probable-scene-change flags, embedded-prompt
 check and labelled contact/crop sheets for a results folder. Pillow + numpy; runs on the pod
 or locally.
