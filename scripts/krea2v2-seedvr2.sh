@@ -667,7 +667,8 @@ DLSTATUS
   echo "Downloads complete. Restarting ComfyUI to load custom node(s)..."
   pkill -f "main.py" || true
   sleep 3
-  cd "$COMFY_ROOT" && "$COMFY_PY" main.py --listen 0.0.0.0 --port 8188 --enable-cors-header >> /proc/1/fd/1 2>> /proc/1/fd/2 &
+  echo "ComfyUI extra launch flags: ${COMFY_EXTRA_ARGS:-none}"
+  cd "$COMFY_ROOT" && "$COMFY_PY" main.py --listen 0.0.0.0 --port 8188 --enable-cors-header ${COMFY_EXTRA_ARGS:-} >> /proc/1/fd/1 2>> /proc/1/fd/2 &
 
   echo "Waiting for ComfyUI to come back online..."
   for i in $(seq 1 300); do
