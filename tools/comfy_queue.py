@@ -210,11 +210,17 @@ def pod_last_state(server):
     return None
 
 
-def fetch(server, rel, dest_root, timeout=300):
-    """Download one output image through ComfyUI's /view endpoint into dest_root/rel."""
+def short_name(rel):
+    """Owner naming (2026-10-31, definitions with \"layout\": \"test-folder\"): name_00001_.png -> name-1.png."""
+    import re
+    return re.sub(r'_(\d{5})_\.png$', lambda m: f'-{int(m.group(1))}.png', rel)
+
+
+def fetch(server, rel, dest_root, timeout=300, short=False):
+    """Download one output image through ComfyUI's /view endpoint into dest_root/rel (short=True drops the counter padding)."""
     sub, fn = os.path.split(rel)
     q = urllib.parse.urlencode({"filename": fn, "subfolder": sub, "type": "output"})
-    dest = os.path.join(dest_root, rel)
+    dest = os.path.join(dest_root, short_name(rel) if short else rel)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     for attempt in (1, 2, 3):
         try:
@@ -341,7 +347,7 @@ def main():
             pid, files, secs = run_one(a.server, wf, ids["save"], a.timeout)
             if a.fetch:
                 for f in files:
-                    fetch(a.server, f, a.output_dir)
+                    fetch(a.server, f, a.output_dir, short=spec.get("layout") == "test-folder")
             done += 1
             flag = "  (suspiciously fast: cached?)" if secs < 3 else ""
             print(f"[{done}/{len(runs)}] {r['label']}: {secs}s -> {', '.join(files) or 'NO FILE'}{flag}")
