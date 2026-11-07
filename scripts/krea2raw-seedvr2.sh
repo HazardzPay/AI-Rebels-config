@@ -3,6 +3,13 @@
 # RAW-only variant of krea2v2-seedvr2.sh: drops krea2_turbo and museByStableYogi (~24.8 GB)
 # to reduce pod boot download time. Use for testing where only the RAW model is needed.
 #
+# v3.2 - build lock (P01): lock.sh next to registry.sh pins node commits, HF revisions and
+#   model sha256. LOCK_MODE (pod env) = off | record (default: compare and warn, change
+#   nothing) | enforce (check out pinned commits, verify hashes, die on any mismatch).
+#   CONFIG_REF (pod env, default main) picks the config-repo commit or tag that BOTH
+#   registry.sh and lock.sh are read from. Every boot writes BUILD_FINGERPRINT.json
+#   (/workspace and ComfyUI's input folder, so /view serves it) and its build id goes
+#   into BOOT_STATUS.
 # v3 - boot stall visibility + download throughput (2026-10-23)
 # Three pods in a row sat 10+ minutes short of DOWNLOAD COMPLETE with a log that looked
 # identical to a healthy one. Two problems: nothing showed whether bytes were moving, and
@@ -69,8 +76,19 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   : > "$POOL_RESULTS"
   : > "$PHASE_TIMES"
   echo 0 > "$QUEUE_NEXT"
-  REGISTRY_URL="https://raw.githubusercontent.com/hazardzpay/AI-Rebels-config/main/registry.sh"
+  CONFIG_REF="${CONFIG_REF:-main}"
+  CONFIG_RAW_BASE="https://raw.githubusercontent.com/hazardzpay/AI-Rebels-config/$CONFIG_REF"
+  REGISTRY_URL="$CONFIG_RAW_BASE/registry.sh"
   REGISTRY_FILE="$STATE_DIR/registry.sh"
+  LOCK_URL="$CONFIG_RAW_BASE/lock.sh"
+  LOCK_FILE="$STATE_DIR/lock.sh"
+  LOCK_MODE="${LOCK_MODE:-record}"
+  MODEL_HASHES="$STATE_DIR/model-hashes"
+  LOCK_WARN="$STATE_DIR/lock-warnings"
+  FINGERPRINT_FILE="/workspace/BUILD_FINGERPRINT.json"
+  : > "$MODEL_HASHES"
+  : > "$LOCK_WARN"
+  case "$LOCK_MODE" in off|record|enforce) ;; *) echo "unknown LOCK_MODE '$LOCK_MODE', using record"; LOCK_MODE=record ;; esac
 
   # Keep Xet's high-performance mode, but bound its buffers and run only two model-file
   # downloads at a time. High-performance Xet otherwise permits up to 64GB of buffering per
@@ -190,6 +208,60 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   # shellcheck source=/dev/null
   source "$REGISTRY_FILE"
 
+  # --- build lock (v3.2) ---
+  declare -A NODE_LOCK=() HF_REVISION=() MODEL_SHA256=()
+  LOCK_ID="none"; COMFYUI_EXPECTED=""; TORCH_EXPECTED=""; PIP_FREEZE_SHA256_EXPECTED=""
+  if [ "$LOCK_MODE" != "off" ]; then
+    if curl -fsSL --retry 3 --retry-delay 5 "$LOCK_URL" -o "$LOCK_FILE" \
+       && grep -q 'declare -A NODE_LOCK' "$LOCK_FILE"; then
+      # shellcheck source=/dev/null
+      source "$LOCK_FILE"
+      echo "Build lock $LOCK_ID loaded from $CONFIG_REF (mode $LOCK_MODE): ${#NODE_LOCK[@]} nodes, ${#MODEL_SHA256[@]} hashes."
+    elif [ "$LOCK_MODE" = "enforce" ]; then
+      die "LOCK_MODE=enforce but no usable lock.sh at $LOCK_URL"
+    else
+      echo "No lock.sh at $LOCK_URL - recording the build only."
+    fi
+  fi
+  # One line per problem into LOCK_WARN. Returns 1 only in enforce mode, so callers can
+  # write `lock_problem ... || die ...` and record mode never stops a boot.
+  lock_problem() {
+    echo "LOCK: $*"
+    echo "$*" >> "$LOCK_WARN"
+    [ "$LOCK_MODE" != "enforce" ]
+  }
+  # Hash a finished download, record it, compare with the lock.
+  verify_model() {
+    local name="$1" path="$2" got want
+    got="$(sha256sum "$path" | cut -d' ' -f1)" || { lock_problem "$name: could not hash $path"; return; }
+    echo "$name $got" >> "$MODEL_HASHES"
+    [ "$LOCK_ID" = "none" ] && return 0
+    want="${MODEL_SHA256[$name]:-}"
+    if [ -z "$want" ]; then lock_problem "$name: not in lock $LOCK_ID (sha256 $got)"; return; fi
+    if [ "$got" != "$want" ]; then lock_problem "$name: sha256 $got, lock $LOCK_ID says $want"; return; fi
+    echo "$name: sha256 matches lock."
+  }
+  # record: compare the node's commit with the lock and warn. enforce: check out the locked
+  # commit (fetching it if the clone does not have it), fail on any problem.
+  pin_node() {
+    local name="$1" dir="$2" want have
+    have="$(git -C "$dir" rev-parse HEAD 2>/dev/null || echo unknown)"
+    [ "$LOCK_ID" = "none" ] && return 0
+    want="${NODE_LOCK[$name]:-}"
+    if [ -z "$want" ]; then lock_problem "node $name is not in lock $LOCK_ID (at $have)"; return; fi
+    if [ "$have" = "$want" ]; then echo "$name at locked commit ${want:0:12}."; return 0; fi
+    if [ "$LOCK_MODE" != "enforce" ]; then
+      lock_problem "node $name at $have, lock $LOCK_ID says $want (record mode: left as is)"; return
+    fi
+    if git -C "$dir" cat-file -e "$want^{commit}" 2>/dev/null \
+       || $TIMEOUT_CMD git -C "$dir" -c http.version=HTTP/1.1 fetch --quiet --no-tags origin "$want"; then
+      if git -C "$dir" checkout --quiet --detach "$want"; then
+        echo "$name pinned to locked ${want:0:12} (clone was at ${have:0:12})."; return 0
+      fi
+    fi
+    lock_problem "node $name: could not check out locked $want (at $have)"
+  }
+
   # --- /workspace/dlstatus.sh: one command for the full picture, works after the boot ---
   cat > /workspace/dlstatus.sh <<'DLSTATUS'
 #!/bin/bash
@@ -286,6 +358,7 @@ DLSTATUS
     repo="$(echo "$url" | sed -E 's#https://huggingface.co/([^/]+/[^/]+)/.*#\1#')"
     repo_path="$(echo "$url" | sed -E 's#https://huggingface.co/[^/]+/[^/]+/resolve/[^/]+/##')"
     filename="$(basename "$url")"
+    local rev="${HF_REVISION[$filename]:-}"
     if [ -s "$dest_dir/$filename" ]; then
       echo "$filename already present, skipping."
       return 0
@@ -297,7 +370,7 @@ DLSTATUS
       rc=0
       wait_for_hf || echo "hf CLI still not runnable after 120s, trying anyway."
       start=$SECONDS
-      $DL_TIMEOUT_CMD hf download "$repo" "$repo_path" --local-dir "$dl_tmp" || rc=$?
+      $DL_TIMEOUT_CMD hf download "$repo" "$repo_path" ${rev:+--revision "$rev"} --local-dir "$dl_tmp" || rc=$?
       if [ "$rc" -eq 0 ]; then
         mv -f "$dl_tmp/$repo_path" "$dest_dir/$filename"
         echo "Finished: $filename in $((SECONDS - start))s (attempt $attempt/3)."
@@ -380,6 +453,11 @@ DLSTATUS
         download_civitai_file "$key" "${CIVITAI_LORAS[$key]}" "$dest" && ok=1
       fi
       rm -f "$INFLIGHT_DIR/$worker"
+      # Hash after the in-flight marker is gone, so the stall detector never reads a
+      # long sha256sum as a stalled transfer.
+      if [ "$ok" -eq 1 ]; then
+        verify_model "$label" "$dest/$label" || ok=0
+      fi
       if [ "$ok" -eq 1 ]; then
         echo "OK $label" >> "$POOL_RESULTS"
         echo "$(date +%H:%M:%S) OK $label $((SECONDS - start))s" >> "$POOL_STATE"
@@ -390,6 +468,77 @@ DLSTATUS
         pool_log "worker $worker: FAIL $label after $(fmt_dur $((SECONDS - start)))"
       fi
     done
+  }
+
+  # Build fingerprint: what this pod actually runs. Prints one line for BOOT_STATUS
+  # ("build ID lock LOCK_ID mode MODE, N warnings"); exits 3 in enforce mode when the
+  # ComfyUI or torch version differs from the lock. No environment variables or tokens
+  # are written; pip freeze goes to a separate file next to it.
+  write_fingerprint() {
+    local nodes_spec="" n
+    for n in promptbatcher rgthree res4lyf krea2edit lanpaint seedvr2 kjnodes kreareason krea2nag negpip twostagesampler; do
+      case "$n" in
+        promptbatcher) nodes_spec+="$n=$PROMPTBATCHER_NODE_DIR"$'\n' ;;
+        rgthree) nodes_spec+="$n=$RGTHREE_NODE_DIR"$'\n' ;;
+        res4lyf) nodes_spec+="$n=$RES4LYF_NODE_DIR"$'\n' ;;
+        krea2edit) nodes_spec+="$n=$KREA2EDIT_NODE_DIR"$'\n' ;;
+        lanpaint) nodes_spec+="$n=$LANPAINT_NODE_DIR"$'\n' ;;
+        seedvr2) nodes_spec+="$n=$SEEDVR2_NODE_DIR"$'\n' ;;
+        kjnodes) nodes_spec+="$n=$KJNODES_NODE_DIR"$'\n' ;;
+        kreareason) nodes_spec+="$n=$KREAREASON_NODE_DIR"$'\n' ;;
+        krea2nag) nodes_spec+="$n=$KREA2NAG_NODE_DIR"$'\n' ;;
+        negpip) nodes_spec+="$n=$NEGPIP_NODE_DIR"$'\n' ;;
+        twostagesampler) nodes_spec+="$n=$TWOSTAGE_NODE_DIR"$'\n' ;;
+      esac
+    done
+    "$COMFY_PY" -m pip freeze 2>/dev/null > "$STATE_DIR/pip-freeze.txt" || true
+    FP_NODES="$nodes_spec" FP_HASHES="$MODEL_HASHES" FP_WARN="$LOCK_WARN" FP_OUT="$FINGERPRINT_FILE" \
+    FP_COMFY_ROOT="$COMFY_ROOT" FP_FREEZE="$STATE_DIR/pip-freeze.txt" FP_HEALTH="$HEALTH_URL" \
+    FP_LOCK_ID="$LOCK_ID" FP_LOCK_MODE="$LOCK_MODE" FP_CONFIG_REF="$CONFIG_REF" \
+    FP_COMFY_EXP="$COMFYUI_EXPECTED" FP_TORCH_EXP="$TORCH_EXPECTED" FP_PIP_EXP="$PIP_FREEZE_SHA256_EXPECTED" \
+    "$COMFY_PY" - <<'FINGERPRINT'
+import hashlib, json, os, shutil, subprocess, sys, time, urllib.request
+E = os.environ
+nodes = {}
+for line in E["FP_NODES"].splitlines():
+    if "=" not in line: continue
+    name, d = line.split("=", 1)
+    git = lambda *a: subprocess.run(["git", "-C", d] + list(a), capture_output=True, text=True).stdout.strip()
+    nodes[name] = {"dir": os.path.basename(d), "commit": git("rev-parse", "HEAD") or None,
+                   "dirty": bool(git("status", "--porcelain", "--untracked-files=no")), "remote": git("remote", "get-url", "origin")}
+models = {}
+for line in open(E["FP_HASHES"]):
+    parts = line.split()
+    if len(parts) == 2: models[parts[0]] = parts[1]
+freeze = open(E["FP_FREEZE"], "rb").read() if os.path.exists(E["FP_FREEZE"]) else b""
+sysinfo = {}
+try:
+    sysinfo = json.load(urllib.request.urlopen(E["FP_HEALTH"] + "/system_stats", timeout=20))["system"]
+except Exception as e:
+    sysinfo = {"error": str(e)}
+warnings = [l.rstrip("\n") for l in open(E["FP_WARN"]) if l.strip()]
+fp = {"time": time.strftime("%Y-%m-%dT%H:%M:%S"), "config_ref": E["FP_CONFIG_REF"], "lock_id": E["FP_LOCK_ID"],
+      "lock_mode": E["FP_LOCK_MODE"], "comfyui": sysinfo.get("comfyui_version"), "torch": sysinfo.get("pytorch_version"),
+      "python": (sysinfo.get("python_version") or "").split(" ")[0], "argv": sysinfo.get("argv"),
+      "pip_freeze_sha256": hashlib.sha256(freeze).hexdigest(), "nodes": nodes, "models": models}
+core = {k: fp[k] for k in ("comfyui", "torch", "pip_freeze_sha256")}
+core["nodes"] = {k: v["commit"] for k, v in nodes.items()}; core["models"] = models
+fp["build_id"] = hashlib.sha256(json.dumps(core, sort_keys=True).encode()).hexdigest()[:12]
+fatal = []
+for key, exp in (("comfyui", E["FP_COMFY_EXP"]), ("torch", E["FP_TORCH_EXP"])):
+    if exp and fp[key] != exp:
+        fatal.append(f"{key} {fp[key]}, lock says {exp}")
+if E["FP_PIP_EXP"] and fp["pip_freeze_sha256"] != E["FP_PIP_EXP"]:
+    warnings.append("pip freeze differs from the lock's (packages drifted; see build_pip_freeze.txt)")
+warnings += fatal
+fp["warnings"] = warnings
+json.dump(fp, open(E["FP_OUT"], "w"), indent=1)
+inp = os.path.join(E["FP_COMFY_ROOT"], "input"); os.makedirs(inp, exist_ok=True)
+shutil.copyfile(E["FP_OUT"], os.path.join(inp, "build_fingerprint.json"))
+if freeze: open(os.path.join(inp, "build_pip_freeze.txt"), "wb").write(freeze)
+print(f"build {fp['build_id']} lock {fp['lock_id']} mode {fp['lock_mode']}, {len(warnings)} warnings")
+sys.exit(3 if fatal and E["FP_LOCK_MODE"] == "enforce" else 0)
+FINGERPRINT
   }
 
   echo "-------------------------------------------------------"
@@ -602,6 +751,7 @@ DLSTATUS
 
   # --- custom node installs ---
   clone_node "promptbatcher" "${CUSTOM_NODES[promptbatcher]}" "$PROMPTBATCHER_NODE_DIR"
+  pin_node "promptbatcher" "$PROMPTBATCHER_NODE_DIR" || die "lock: node promptbatcher"
   install_node_reqs "promptbatcher" "$PROMPTBATCHER_NODE_DIR"
   clone_node "rgthree" "${CUSTOM_NODES[rgthree]}" "$RGTHREE_NODE_DIR"
   install_node_reqs "rgthree" "$RGTHREE_NODE_DIR"
@@ -619,24 +769,34 @@ DLSTATUS
   sed -i 's/"patch_recursive_execution": true/"patch_recursive_execution": false/' "$RGTHREE_NODE_DIR/rgthree_config.json.default"
   printf '{\n  "patch_recursive_execution": false\n}\n' > "$RGTHREE_NODE_DIR/rgthree_config.json"
   echo "rgthree: checked out main - default branch dev is stale and breaks ComfyUI 0.30.0."
+  pin_node "rgthree" "$RGTHREE_NODE_DIR" || die "lock: node rgthree"
   echo "rgthree at $(git -C "$RGTHREE_NODE_DIR" log -1 --format='%h %ci')"
   clone_node "res4lyf" "${CUSTOM_NODES[res4lyf]}" "$RES4LYF_NODE_DIR" "example_workflows" "workflows"
+  pin_node "res4lyf" "$RES4LYF_NODE_DIR" || die "lock: node res4lyf"
   install_node_reqs "res4lyf" "$RES4LYF_NODE_DIR"
   clone_node "krea2edit" "${CUSTOM_NODES[krea2edit]}" "$KREA2EDIT_NODE_DIR"
+  pin_node "krea2edit" "$KREA2EDIT_NODE_DIR" || die "lock: node krea2edit"
   install_node_reqs "krea2edit" "$KREA2EDIT_NODE_DIR"
   clone_node "lanpaint" "${CUSTOM_NODES[lanpaint]}" "$LANPAINT_NODE_DIR" "examples" "example_workflows" "tests"
+  pin_node "lanpaint" "$LANPAINT_NODE_DIR" || die "lock: node lanpaint"
   install_node_reqs "lanpaint" "$LANPAINT_NODE_DIR"
   clone_node "seedvr2" "${CUSTOM_NODES[seedvr2]}" "$SEEDVR2_NODE_DIR"
+  pin_node "seedvr2" "$SEEDVR2_NODE_DIR" || die "lock: node seedvr2"
   install_node_reqs "seedvr2" "$SEEDVR2_NODE_DIR"
   clone_node "kjnodes" "${CUSTOM_NODES[kjnodes]}" "$KJNODES_NODE_DIR"
+  pin_node "kjnodes" "$KJNODES_NODE_DIR" || die "lock: node kjnodes"
   install_node_reqs "kjnodes" "$KJNODES_NODE_DIR"
   clone_node "kreareason" "${CUSTOM_NODES[kreareason]}" "$KREAREASON_NODE_DIR"
+  pin_node "kreareason" "$KREAREASON_NODE_DIR" || die "lock: node kreareason"
   install_node_reqs "kreareason" "$KREAREASON_NODE_DIR"
   clone_node "krea2nag" "${CUSTOM_NODES[krea2nag]}" "$KREA2NAG_NODE_DIR"
+  pin_node "krea2nag" "$KREA2NAG_NODE_DIR" || die "lock: node krea2nag"
   install_node_reqs "krea2nag" "$KREA2NAG_NODE_DIR"
   clone_node "negpip" "${CUSTOM_NODES[negpip]}" "$NEGPIP_NODE_DIR"
+  pin_node "negpip" "$NEGPIP_NODE_DIR" || die "lock: node negpip"
   install_node_reqs "negpip" "$NEGPIP_NODE_DIR"
   clone_node "twostagesampler" "${CUSTOM_NODES[twostagesampler]}" "$TWOSTAGE_NODE_DIR" "example_workflows" "images"
+  pin_node "twostagesampler" "$TWOSTAGE_NODE_DIR" || die "lock: node twostagesampler"
   install_node_reqs "twostagesampler" "$TWOSTAGE_NODE_DIR"
   # --- end custom node installs ---
 
@@ -680,9 +840,12 @@ DLSTATUS
 
   kill "$HEARTBEAT_PID" 2>/dev/null || true
   wait "$HEARTBEAT_PID" 2>/dev/null || true
+  phase "fingerprint"
+  BUILD_LINE="$(write_fingerprint)" || die "lock: build fingerprint does not match lock $LOCK_ID ($BUILD_LINE)"
+  echo "Build: $BUILD_LINE"
   phase "complete"
   print_phase_times
-  echo "COMPLETE in $(fmt_dur "$SECONDS") - ${#POOL_ITEMS[@]} items, 0 failures" > "$BOOT_STATUS_FILE"
+  echo "COMPLETE in $(fmt_dur "$SECONDS") - ${#POOL_ITEMS[@]} items, 0 failures - $BUILD_LINE" > "$BOOT_STATUS_FILE"
 
   echo "-------------------------------------------------------"
   echo "DOWNLOAD COMPLETE - KREA2 RAW + SEEDVR2 INSTALLED"

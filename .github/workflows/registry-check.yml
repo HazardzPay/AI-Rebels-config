@@ -1,0 +1,36 @@
+name: Registry and lock check
+
+# Pushing to main is a deploy (every new pod reads registry.sh and lock.sh from main), so this runs on pull
+# requests too; protect main with a required check if pushes should wait for it.
+on:
+  pull_request:
+    paths:
+      - 'registry.sh'
+      - 'lock.sh'
+      - 'scripts/*.sh'
+      - '.github/scripts/check_registry.sh'
+      - '.github/workflows/registry-check.yml'
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'registry.sh'
+      - 'lock.sh'
+      - 'scripts/*.sh'
+      - '.github/scripts/check_registry.sh'
+      - '.github/workflows/registry-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check registry.sh, lock.sh and the live boot scripts
+        env:
+          ONLINE: "1"
+          GITHUB_TOKEN: ${{ github.token }}   # only to lift the API rate limit for the commit checks; never printed
+        run: bash .github/scripts/check_registry.sh
