@@ -11,11 +11,14 @@ and the ComfyUI version the pods are expected to report. Sources, strongest firs
                      LFS sha256 via the HF API, CivitAI SHA256 via its API. Used alone it gives a DRAFT lock (what a
                      pod booted now would get), not a record of what a pod ran.
 Where two sources give a file's sha256 and they differ, the pod wins and a WARNING comment is written; exit 2.
+With a pod or fingerprint and --upstream, every node commit the pod reports is also fetched from its registry
+URL. One upstream does not serve ("not our ref") is still locked, and marked NODE_SOURCE[name]="preinstalled":
+the folder was on the pod before the boot script cloned anything, so a boot can compare it but not restore it.
 
 Usage: python3 tools/make_lock.py --registry registry.sh --script scripts/krea2raw-seedvr2.sh
                                   [--pod URL | --fingerprint F] [--upstream] --lock-id ID [--out lock.sh]
 No tokens are read or written. Output is bash, sourced by the boot script after registry.sh."""
-import argparse, json, re, subprocess, sys, urllib.request, urllib.parse, datetime
+import argparse, json, re, subprocess, sys, tempfile, urllib.request, urllib.parse, datetime
 UA = {"User-Agent": "Mozilla/5.0"}
 
 def get(url, timeout=30):
@@ -64,6 +67,15 @@ def upstream_node(name, url):
     out = subprocess.run(["git", "ls-remote", url, ref], capture_output=True, text=True, timeout=60).stdout.split()
     return out[0] if out else None
 
+def upstream_has_commit(url, sha):
+    """True if the commit can be fetched from url, False if upstream refuses it, None if the check itself failed."""
+    with tempfile.TemporaryDirectory() as d:
+        subprocess.run(["git", "init", "-q", d], capture_output=True, timeout=60)
+        r = subprocess.run(["git", "-C", d, "-c", "http.version=HTTP/1.1", "fetch", "--quiet", "--no-tags", "--depth", "1",
+                            "--filter=blob:none", url, sha], capture_output=True, text=True, timeout=300)
+    if r.returncode == 0: return True
+    return False if "not our ref" in r.stderr else None
+
 ap = argparse.ArgumentParser()
 ap.add_argument("--registry", required=True); ap.add_argument("--script", required=True)
 ap.add_argument("--pod"); ap.add_argument("--fingerprint"); ap.add_argument("--upstream", action="store_true")
@@ -81,12 +93,19 @@ elif a.fingerprint:
 if not fp and not a.upstream:
     sys.exit("give --pod, --fingerprint or --upstream")
 
-warn, nodes, hfrev, sha = [], {}, {}, {}
+warn, nodes, hfrev, sha, nodesrc = [], {}, {}, {}, {}
 fp_nodes, fp_models = fp.get("nodes", {}), fp.get("models", {})
 for n in node_keys:
     if n not in reg["CUSTOM_NODES"]: warn.append(f"node {n} used by the script but not in registry.sh"); continue
     s = (fp_nodes.get(n) or {}).get("commit")
     if fp_nodes.get(n, {}).get("dirty"): warn.append(f"node {n}: working tree dirty on the pod (local edits)")
+    if s and a.upstream:
+        try: has = upstream_has_commit(reg["CUSTOM_NODES"][n], s)
+        except Exception: has = None
+        if has is False:
+            nodesrc[n] = "preinstalled"
+            warn.append(f"node {n}: commit {s[:12]} is not served by {reg['CUSTOM_NODES'][n]}; marked preinstalled (a boot cannot restore it)")
+        elif has is None: warn.append(f"node {n}: could not check commit {s[:12]} against upstream")
     if not s and a.upstream: s = upstream_node(n, reg["CUSTOM_NODES"][n])
     if s: nodes[n] = s
     else: warn.append(f"node {n}: no commit found")
@@ -123,6 +142,10 @@ L = ["#!/bin/bash", "# lock.sh - build lock for the boot scripts. Sourced after 
      f'TORCH_EXPECTED="{fp.get("torch", "")}"',
      f'PIP_FREEZE_SHA256_EXPECTED="{fp.get("pip_freeze_sha256", "")}"', "",
      "declare -A NODE_LOCK"] + [f'NODE_LOCK[{k}]="{v}"' for k, v in sorted(nodes.items())] + \
+    (["", "# Nodes whose locked commit cannot be fetched from the registry URL: the folder was on the pod before the boot",
+      "# script's clone step, at a commit upstream does not serve. The boot script still compares the pod's commit",
+      "# with NODE_LOCK and, in enforce mode, stops on a mismatch; it cannot restore the commit if the folder is absent.",
+      "declare -A NODE_SOURCE"] + [f'NODE_SOURCE[{k}]="{v}"' for k, v in sorted(nodesrc.items())] if nodesrc else []) + \
     ["", "declare -A HF_REVISION"] + [f'HF_REVISION[{k}]="{v}"' for k, v in sorted(hfrev.items())] + \
     ["", "declare -A MODEL_SHA256"] + [f'MODEL_SHA256[{k}]="{v}"' for k, v in sorted(sha.items())] + [""] + \
     [f"# WARNING: {w}" for w in warn]
