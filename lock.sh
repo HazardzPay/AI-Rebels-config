@@ -1,6 +1,7 @@
 #!/bin/bash
 # lock.sh - build lock for the boot scripts. Sourced after registry.sh; do not execute.
 # Generated 2026-11-07 by tools/make_lock.py from: pod da305969e2b8 + upstream
+# 2026-11-10: NODE_SOURCE added (kjnodes); every pin is unchanged, so LOCK_ID is kept.
 # Edit by regenerating, not by hand. LOCK_MODE (pod env): off | record (default) | enforce.
 LOCK_ID="2026-11-07-a"
 COMFYUI_EXPECTED="0.30.0"
@@ -19,6 +20,12 @@ NODE_LOCK[res4lyf]="6780724de0ddb98e7454d54bb80387836a911ece"
 NODE_LOCK[rgthree]="bc48c6aaeca87bedbc14245d89f9bc6be37a630e"
 NODE_LOCK[seedvr2]="4490bd1f482e026674543386bb2a4d176da245b9"
 NODE_LOCK[twostagesampler]="df2692f11d5227b440c501b1f22ca5c63987530c"
+
+# Nodes whose locked commit cannot be fetched from the registry URL: the folder was on the pod before the boot
+# script's clone step, at a commit upstream does not serve. The boot script still compares the pod's commit
+# with NODE_LOCK and, in enforce mode, stops on a mismatch; it cannot restore the commit if the folder is absent.
+declare -A NODE_SOURCE
+NODE_SOURCE[kjnodes]="preinstalled"
 
 declare -A HF_REVISION
 HF_REVISION[K_excessivecum.safetensors]="7cc34083e013c0daa918eb4d14b8d041aa8f8109"

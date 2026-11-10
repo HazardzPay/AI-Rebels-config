@@ -8,6 +8,8 @@
 #   5. (ONLINE=1, default in CI) every HF file a live script downloads resolves through the HF API (at the
 #      locked revision when there is one; its LFS sha256 must equal the lock's), every CivitAI version
 #      exists (and its SHA256 equals the lock's when CivitAI publishes one), every locked node commit exists.
+#      A node the lock marks NODE_SOURCE[name]="preinstalled" is the exception: its commit must NOT exist
+#      upstream (the mark is removed once it does), and the check prints a note instead of failing.
 # Reads no secrets. Exit 1 on any failure.
 set -uo pipefail
 cd "$(dirname "$0")/../.."
@@ -22,6 +24,7 @@ done
 # shellcheck source=/dev/null
 ( source registry.sh && declare -p CUSTOM_NODES HF_MODELS CIVITAI_LORAS >/dev/null ) || bad "registry.sh does not source or lacks an array"
 source registry.sh
+declare -A NODE_SOURCE=()
 if [ -f lock.sh ]; then source lock.sh; else declare -A NODE_LOCK=() HF_REVISION=() MODEL_SHA256=(); fi
 
 for s in $LIVE; do
@@ -39,6 +42,10 @@ done
 for k in "${!NODE_LOCK[@]}"; do
   [ -n "${CUSTOM_NODES[$k]+x}" ] || bad "lock NODE_LOCK[$k] has no CUSTOM_NODES entry"
   [[ "${NODE_LOCK[$k]}" =~ ^[0-9a-f]{40}$ ]] || bad "lock NODE_LOCK[$k] is not a 40-hex commit"
+done
+for k in "${!NODE_SOURCE[@]}"; do
+  [ -n "${NODE_LOCK[$k]+x}" ] || bad "lock NODE_SOURCE[$k] has no NODE_LOCK entry"
+  [ "${NODE_SOURCE[$k]}" = "preinstalled" ] || bad "lock NODE_SOURCE[$k] is '${NODE_SOURCE[$k]}', expected preinstalled"
 done
 for k in "${!HF_REVISION[@]}"; do
   [ -n "${HF_MODELS[$k]+x}" ] || bad "lock HF_REVISION[$k] has no HF_MODELS entry"
@@ -82,7 +89,16 @@ if [ "${ONLINE:-1}" = "1" ]; then
     repo="$(sed -E 's#https://github.com/##; s#\.git$##' <<<"${CUSTOM_NODES[$k]}")"
     code="$(curl -s -o /dev/null -w '%{http_code}' -A "$UA" ${GITHUB_TOKEN:+-H "Authorization: Bearer $GITHUB_TOKEN"} \
             "https://api.github.com/repos/$repo/commits/${NODE_LOCK[$k]}")"
+    if [ "${NODE_SOURCE[$k]:-}" = "preinstalled" ]; then
+      case "$code" in
+        200) bad "node $k: marked preinstalled, but commit ${NODE_LOCK[$k]} exists in $repo: remove the mark" ;;
+        404|422) echo "note node $k: commit ${NODE_LOCK[$k]} is preinstalled on the pod, not in $repo (HTTP $code)" ;;
+        *) bad "node $k: could not check commit ${NODE_LOCK[$k]} in $repo (HTTP $code)" ;;
+      esac
+      continue
+    fi
     [ "$code" = "200" ] || bad "node $k: commit ${NODE_LOCK[$k]} not found in $repo (HTTP $code)"
+    echo "ok node $k"
   done
 fi
 
