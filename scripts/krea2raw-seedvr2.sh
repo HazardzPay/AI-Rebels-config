@@ -242,7 +242,8 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
     echo "$name: sha256 matches lock."
   }
   # record: compare the node's commit with the lock and warn. enforce: check out the locked
-  # commit (fetching it if the clone does not have it), fail on any problem.
+  # commit (fetching it from the registry URL if the clone does not have it, so a folder that came
+  # with the base image under another remote or a local snapshot commit is still pinned), fail on any problem.
   pin_node() {
     local name="$1" dir="$2" want have
     have="$(git -C "$dir" rev-parse HEAD 2>/dev/null || echo unknown)"
@@ -254,7 +255,7 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
       lock_problem "node $name at $have, lock $LOCK_ID says $want (record mode: left as is)"; return
     fi
     if git -C "$dir" cat-file -e "$want^{commit}" 2>/dev/null \
-       || $TIMEOUT_CMD git -C "$dir" -c http.version=HTTP/1.1 fetch --quiet --no-tags origin "$want"; then
+       || $TIMEOUT_CMD git -C "$dir" -c http.version=HTTP/1.1 fetch --quiet --no-tags "${CUSTOM_NODES[$name]:-origin}" "$want"; then
       if git -C "$dir" checkout --quiet --detach "$want"; then
         echo "$name pinned to locked ${want:0:12} (clone was at ${have:0:12})."; return 0
       fi

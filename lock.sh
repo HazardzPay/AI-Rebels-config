@@ -2,14 +2,16 @@
 # lock.sh - build lock for the boot scripts. Sourced after registry.sh; do not execute.
 # Generated 2026-11-07 by tools/make_lock.py from: pod da305969e2b8 + upstream
 # 2026-11-10: NODE_SOURCE added (kjnodes); every pin is unchanged, so LOCK_ID is kept.
+# 2026-11-12: kjnodes pinned to upstream bc8e4ce4254b (same tree as the pod snapshot 9e185a1a8bc1, which upstream
+#   does not serve); NODE_SOURCE mark removed, so a boot can restore the node. New LOCK_ID; every other pin unchanged.
 # Edit by regenerating, not by hand. LOCK_MODE (pod env): off | record (default) | enforce.
-LOCK_ID="2026-11-07-a"
+LOCK_ID="2026-11-12-a"
 COMFYUI_EXPECTED="0.30.0"
 TORCH_EXPECTED="2.10.0+cu128"
 PIP_FREEZE_SHA256_EXPECTED="2340d7921803846033cd9dfcdf3a5cb51f9e9e784e4e532591c0818edf1a0573"
 
 declare -A NODE_LOCK
-NODE_LOCK[kjnodes]="9e185a1a8bc12a919d035a74bdbdcb0f1a14ba81"
+NODE_LOCK[kjnodes]="bc8e4ce4254bcd0050383386ee2f9d753dbf1fa5"
 NODE_LOCK[krea2edit]="13ef60f20828949becada815d3cbc371eb5ccaab"
 NODE_LOCK[krea2nag]="0afb38dfc4ae4040d621ac5a46e1761b83fa2a43"
 NODE_LOCK[kreareason]="196b8993e62bfc3450178b2051805f8ddbd366d1"
@@ -20,12 +22,6 @@ NODE_LOCK[res4lyf]="6780724de0ddb98e7454d54bb80387836a911ece"
 NODE_LOCK[rgthree]="bc48c6aaeca87bedbc14245d89f9bc6be37a630e"
 NODE_LOCK[seedvr2]="4490bd1f482e026674543386bb2a4d176da245b9"
 NODE_LOCK[twostagesampler]="df2692f11d5227b440c501b1f22ca5c63987530c"
-
-# Nodes whose locked commit cannot be fetched from the registry URL: the folder was on the pod before the boot
-# script's clone step, at a commit upstream does not serve. The boot script still compares the pod's commit
-# with NODE_LOCK and, in enforce mode, stops on a mismatch; it cannot restore the commit if the folder is absent.
-declare -A NODE_SOURCE
-NODE_SOURCE[kjnodes]="preinstalled"
 
 declare -A HF_REVISION
 HF_REVISION[K_excessivecum.safetensors]="7cc34083e013c0daa918eb4d14b8d041aa8f8109"
