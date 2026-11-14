@@ -25,6 +25,7 @@ changed within one scene ~2-9; a different scene ~12-21. Pairs at or above --sce
 import argparse
 import json
 import os
+import re
 import struct
 import sys
 
@@ -55,6 +56,18 @@ def png_prompt_text(path):
     return None
 
 
+def _local_names(rel):
+    """The names a pod file may carry on the Mac (CORE 'Pod', File naming): as on the pod (name_00001_.png), short
+    (name-1.png) or subject-batch (subject-1_rest.png). Task item 124, W5: the index lists the pod's names, and with
+    only those this script found no image in any test-folder definition."""
+    d, fn = os.path.split(rel)
+    out = [rel, re.sub(r'_(\d{5})_\.png$', lambda m: f'-{int(m.group(1))}.png', rel)]
+    m = re.match(r'^([^_]+)_(.+)_(\d{5})_\.png$', fn)
+    if m:
+        out.insert(1, os.path.join(d, f'{m.group(1)}-{int(m.group(3))}_{m.group(2)}.png'))
+    return out
+
+
 def load_items(results_dir, include):
     idx_path = os.path.join(results_dir, "index.jsonl")
     items = []
@@ -64,11 +77,12 @@ def load_items(results_dir, include):
             d = json.loads(line)
             if d.get("warmup"):
                 continue
-            for f in d.get("files", []):
-                cands = [os.path.join(parent, f), os.path.join(results_dir, os.path.basename(f))]
+            files = d.get("files", [])
+            for k, f in enumerate(files, 1):
+                cands = [os.path.join(parent, n) for n in _local_names(f)] + [os.path.join(results_dir, os.path.basename(n)) for n in _local_names(f)]
                 path = next((c for c in cands if os.path.exists(c)), None)
                 if path:
-                    items.append({"label": d["label"], "file": path, "seed": d.get("seed"),
+                    items.append({"label": d["label"] if len(files) == 1 else f"{d['label']} #{k}", "file": path, "seed": d.get("seed"),
                                   "sampler": d.get("sampler"), "prompt": d.get("prompt")})
     else:
         for f in sorted(os.listdir(results_dir)):
@@ -132,7 +146,10 @@ def main():
     n = len(items)
     matrix = None
     if arrs is not None:
-        matrix = [[round(float(np.abs(arrs[r] - arrs[c]).mean()), 3) for c in range(n)] for r in range(n)]
+        matrix = [[0.0] * n for _ in range(n)]   # each pair once: the matrix is symmetric (it was computed twice over)
+        for r in range(n):
+            for c in range(r + 1, n):
+                matrix[r][c] = matrix[c][r] = round(float(np.abs(arrs[r] - arrs[c]).mean()), 3)
     else:
         print(f"WARNING: images differ in size {sizes}; no pixel matrix")
 
