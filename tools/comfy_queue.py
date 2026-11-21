@@ -119,6 +119,40 @@ def die(msg):
     sys.exit(1)
 
 
+# Task item 167 (2026-11-21): a download is checked before it is renamed into place. A cut download used to count as
+# present (a 2.5 MB render cut at an exact multiple of 4096 bytes, with no error from the connection).
+# sync_outputs.py and png_check.py import these two functions; the pod copy of this file carries them itself.
+PNG_SIG = b"\x89PNG\r\n\x1a\n"
+
+
+class CutDownload(Exception):
+    pass
+
+
+def png_problem(data):
+    """None when data is a whole PNG: the signature, then every chunk complete with a matching CRC, up to IEND.
+    Otherwise one line saying what is wrong (cut at N bytes, a bad CRC, not a PNG)."""
+    import struct, zlib
+    if data[:8] != PNG_SIG: return f"not a PNG ({len(data)} bytes, no PNG signature)"
+    i = 8
+    while True:
+        if i + 12 > len(data): return f"cut at {len(data)} bytes (no IEND chunk)"
+        n = struct.unpack(">I", data[i:i + 4])[0]; t = data[i + 4:i + 8]
+        if i + 12 + n > len(data): return f"cut at {len(data)} bytes (inside a {t.decode('latin-1')} chunk of {n} bytes)"
+        if zlib.crc32(data[i + 4:i + 8 + n]) & 0xFFFFFFFF != struct.unpack(">I", data[i + 8 + n:i + 12 + n])[0]:
+            return f"bad CRC in a {t.decode('latin-1')} chunk at byte {i}"
+        i += 12 + n
+        if t == b"IEND": return None
+
+
+def download_problem(data, length=None, name=""):
+    """None when a download is whole: as long as the Content-Length the server sent (when it sent one) and, for a .png
+    name, a whole PNG (png_problem)."""
+    if length is not None and str(length).strip().isdigit() and int(length) != len(data):
+        return f"{len(data)} of the {int(length)} bytes the server announced"
+    return png_problem(data) if name.lower().endswith(".png") else None
+
+
 GET_TRIES = 3            # task item 124, W4: a GET is asked up to three times; a POST never twice
 RETRY_WAIT = float(os.environ.get("CQ_RETRY_WAIT", "3"))
 HTTP_TIMEOUT = float(os.environ.get("CQ_HTTP_TIMEOUT", "30"))
@@ -300,14 +334,18 @@ def fetch(server, rel, dest_root, timeout=300, short=False, style=None):
         try:
             with urllib.request.urlopen(urllib.request.Request(f"{server}/view?{q}", headers={"User-Agent": UA}),
                                         timeout=timeout) as r, open(dest + ".part", "wb") as f:
+                length = r.headers.get("Content-Length")
                 while True:
                     chunk = r.read(1 << 20)
                     if not chunk:
                         break
                     f.write(chunk)
+            bad = download_problem(open(dest + ".part", "rb").read(), length, fn)  # item 167: never rename a cut file into place
+            if bad:
+                raise CutDownload(f"incomplete download: {bad}")
             os.replace(dest + ".part", dest)
             return
-        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http_client.IncompleteRead, CutDownload) as e:
             print(f"  download of {rel} failed (attempt {attempt}/3): {e}")
             time.sleep(3)
     die(f"could not download {rel}")
