@@ -3,6 +3,11 @@
 # RAW-only variant of krea2v2-seedvr2.sh: drops krea2_turbo and museByStableYogi (~24.8 GB)
 # to reduce pod boot download time. Use for testing where only the RAW model is needed.
 #
+# v3.3 - depth maps for the finish (2026-11-22): kijai's ComfyUI-DepthAnythingV2 (pinned, requirements not
+#   installed: its models come from this queue and accelerate is never imported), the relative Large fp32 and
+#   metric indoor Large fp32 models into models/depthanything, and comfy_nodes/depth_anything_v2_raw.py from this
+#   repo at CONFIG_REF (its sha256 checked against lock.sh like a model).
+#
 # v3.2 - build lock (P01): lock.sh next to registry.sh pins node commits, HF revisions and
 #   model sha256. LOCK_MODE (pod env) = off | record (default: compare and warn, change
 #   nothing) | enforce (check out pinned commits, verify hashes, die on any mismatch).
@@ -53,6 +58,8 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/dev/null"
   KREA2NAG_NODE_DIR="$CUSTOM_NODES_DIR/ComfyUI-Krea2-NAG"
   NEGPIP_NODE_DIR="$CUSTOM_NODES_DIR/ComfyUI-krea2-negpip"
   TWOSTAGE_NODE_DIR="$CUSTOM_NODES_DIR/Krea-2-Two-Stage-Sampler"
+  DEPTHANYTHING_NODE_DIR="$CUSTOM_NODES_DIR/ComfyUI-DepthAnythingV2"
+  DEPTHRAW_FILE="$CUSTOM_NODES_DIR/depth_anything_v2_raw.py"
   MODELS_DIR="$COMFY_ROOT/models"
   SEEDVR2_MODELS_DIR="$COMFY_ROOT/models/SEEDVR2"
   TMP_DIR="/workspace/hf-downloads"
@@ -477,7 +484,7 @@ DLSTATUS
   # are written; pip freeze goes to a separate file next to it.
   write_fingerprint() {
     local nodes_spec="" n
-    for n in promptbatcher rgthree res4lyf krea2edit lanpaint seedvr2 kjnodes kreareason krea2nag negpip twostagesampler; do
+    for n in promptbatcher rgthree res4lyf krea2edit lanpaint seedvr2 kjnodes kreareason krea2nag negpip twostagesampler depthanythingv2; do
       case "$n" in
         promptbatcher) nodes_spec+="$n=$PROMPTBATCHER_NODE_DIR"$'\n' ;;
         rgthree) nodes_spec+="$n=$RGTHREE_NODE_DIR"$'\n' ;;
@@ -490,6 +497,7 @@ DLSTATUS
         krea2nag) nodes_spec+="$n=$KREA2NAG_NODE_DIR"$'\n' ;;
         negpip) nodes_spec+="$n=$NEGPIP_NODE_DIR"$'\n' ;;
         twostagesampler) nodes_spec+="$n=$TWOSTAGE_NODE_DIR"$'\n' ;;
+        depthanythingv2) nodes_spec+="$n=$DEPTHANYTHING_NODE_DIR"$'\n' ;;
       esac
     done
     "$COMFY_PY" -m pip freeze 2>/dev/null > "$STATE_DIR/pip-freeze.txt" || true
@@ -696,6 +704,8 @@ FINGERPRINT
     "${HF_MODELS[seedvr2_ema_7b_fp16.safetensors]}|$SEEDVR2_MODELS_DIR"
     "${HF_MODELS[krea2_raw_fp8_scaled.safetensors]}|$MODELS_DIR/diffusion_models"
     "${HF_MODELS[qwen3vl_4b_fp8_scaled.safetensors]}|$MODELS_DIR/text_encoders"
+    "${HF_MODELS[depth_anything_v2_vitl_fp32.safetensors]}|$MODELS_DIR/depthanything"
+    "${HF_MODELS[depth_anything_v2_metric_hypersim_vitl_fp32.safetensors]}|$MODELS_DIR/depthanything"
     "${HF_MODELS[realism_engine_krea2_v2.safetensors]}|$MODELS_DIR/loras"
     "${HF_MODELS[snofs_krea_v1_1.safetensors]}|$MODELS_DIR/loras"
     "${HF_MODELS[krea2_identity_edit_v1_2.safetensors]}|$MODELS_DIR/loras"
@@ -799,6 +809,15 @@ FINGERPRINT
   clone_node "twostagesampler" "${CUSTOM_NODES[twostagesampler]}" "$TWOSTAGE_NODE_DIR" "example_workflows" "images"
   pin_node "twostagesampler" "$TWOSTAGE_NODE_DIR" || die "lock: node twostagesampler"
   install_node_reqs "twostagesampler" "$TWOSTAGE_NODE_DIR"
+  clone_node "depthanythingv2" "${CUSTOM_NODES[depthanythingv2]}" "$DEPTHANYTHING_NODE_DIR"
+  pin_node "depthanythingv2" "$DEPTHANYTHING_NODE_DIR" || die "lock: node depthanythingv2"
+  # No install_node_reqs: its requirements (huggingface_hub, accelerate) serve only its own model download,
+  # which the queue above makes unnecessary; installing them would change the pip freeze.
+  echo "depth_anything_v2_raw.py" > "$CLONE_NOW"
+  curl -fsSL --retry 3 --retry-delay 5 "$CONFIG_RAW_BASE/comfy_nodes/depth_anything_v2_raw.py" -o "$DEPTHRAW_FILE" \
+    || die "could not fetch comfy_nodes/depth_anything_v2_raw.py from $CONFIG_REF"
+  : > "$CLONE_NOW"
+  verify_model "depth_anything_v2_raw.py" "$DEPTHRAW_FILE" || die "lock: depth_anything_v2_raw.py"
   # --- end custom node installs ---
 
   # ComfyUI 0.30.0 renamed comfy/logging.py -> comfy/internal_logging.py.

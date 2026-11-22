@@ -4,14 +4,18 @@
 # 2026-11-10: NODE_SOURCE added (kjnodes); every pin is unchanged, so LOCK_ID is kept.
 # 2026-11-12: kjnodes pinned to upstream bc8e4ce4254b (same tree as the pod snapshot 9e185a1a8bc1, which upstream
 #   does not serve); NODE_SOURCE mark removed, so a boot can restore the node. New LOCK_ID; every other pin unchanged.
+# 2026-11-22: depth for the finish: node depthanythingv2 (kijai, pinned), its two Large fp32 models (HF revision and
+#   sha256 from the Hugging Face file index), and comfy_nodes/depth_anything_v2_raw.py from this repo (sha256). Added by
+#   hand, not regenerated: the node's requirements are not installed, so the pip freeze is unchanged. New LOCK_ID.
 # Edit by regenerating, not by hand. LOCK_MODE (pod env): off | record (default) | enforce.
-LOCK_ID="2026-11-12-a"
+LOCK_ID="2026-11-22-a"
 COMFYUI_EXPECTED="0.30.0"
 TORCH_EXPECTED="2.10.0+cu128"
 PIP_FREEZE_SHA256_EXPECTED="2340d7921803846033cd9dfcdf3a5cb51f9e9e784e4e532591c0818edf1a0573"
 
 declare -A NODE_LOCK
 NODE_LOCK[kjnodes]="bc8e4ce4254bcd0050383386ee2f9d753dbf1fa5"
+NODE_LOCK[depthanythingv2]="553187872eeb1d52e50dc53209fa57e569609a72"
 NODE_LOCK[krea2edit]="13ef60f20828949becada815d3cbc371eb5ccaab"
 NODE_LOCK[krea2nag]="0afb38dfc4ae4040d621ac5a46e1761b83fa2a43"
 NODE_LOCK[kreareason]="196b8993e62bfc3450178b2051805f8ddbd366d1"
@@ -24,6 +28,8 @@ NODE_LOCK[seedvr2]="4490bd1f482e026674543386bb2a4d176da245b9"
 NODE_LOCK[twostagesampler]="df2692f11d5227b440c501b1f22ca5c63987530c"
 
 declare -A HF_REVISION
+HF_REVISION[depth_anything_v2_metric_hypersim_vitl_fp32.safetensors]="5aa7ab578df757d94c743998b157a0204ff29215"
+HF_REVISION[depth_anything_v2_vitl_fp32.safetensors]="5aa7ab578df757d94c743998b157a0204ff29215"
 HF_REVISION[K_excessivecum.safetensors]="7cc34083e013c0daa918eb4d14b8d041aa8f8109"
 HF_REVISION[RealisticSnapshotKrea2.safetensors]="7cc34083e013c0daa918eb4d14b8d041aa8f8109"
 HF_REVISION[anal_helper_krea2_loraholic.safetensors]="7cc34083e013c0daa918eb4d14b8d041aa8f8109"
@@ -46,6 +52,9 @@ MODEL_SHA256[HMBreasts_krea2_epoch12.safetensors]="8384956ca76cf2e037b5e05c1e4cc
 MODEL_SHA256[K_excessivecum.safetensors]="90e4c4270a78f2b6bd8bda542806de69a2764a8b8e9abe86dcefea57fc7a6e76"
 MODEL_SHA256[RealisticSnapshotKrea2.safetensors]="dfd67eb881bec4caeb9409e5b7c127adcb9fb724e6007e1e77165af51e6f908d"
 MODEL_SHA256[anal_helper_krea2_loraholic.safetensors]="d311f0c556617d45ff29e604794ebe235d5adec7c2a9e2d8fec0119434b13d85"
+MODEL_SHA256[depth_anything_v2_metric_hypersim_vitl_fp32.safetensors]="76bc12f47f4fc543d67d4c3b695d09ae5399aa2f212382a204965a9aca4dc8bd"
+MODEL_SHA256[depth_anything_v2_raw.py]="3ac622d7b557358b00e1f9ecd0f7f919ced5f560974309efabf5e02bac354bd0"
+MODEL_SHA256[depth_anything_v2_vitl_fp32.safetensors]="203aba6a1b551aa6a1818652b92ac9a43a50fdc7daef9780eb265e4ee9c7521e"
 MODEL_SHA256[ema_vae_fp16.safetensors]="20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1"
 MODEL_SHA256[famegrid_spicy_3167060.safetensors]="7b4a37a9b9ec3885bf39242f2d4f691f186d959cbaaa30b0630e4631767b425e"
 MODEL_SHA256[kodak.safetensors]="578be79ba473ca37dd1865fca07eade6f4fc7082241802ba2a7207f281957980"
