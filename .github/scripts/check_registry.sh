@@ -4,7 +4,8 @@
 #   1. bash -n on registry.sh, lock.sh and every live script
 #   2. registry.sh sources cleanly and declares its arrays
 #   3. every HF_MODELS / CIVITAI_LORAS / CUSTOM_NODES key a live script uses exists in registry.sh
-#   4. every lock.sh key exists in registry.sh; every lock value has the right shape
+#   4. every lock.sh key exists in registry.sh (a MODEL_SHA256 key may instead name a file in comfy_nodes/,
+#      whose sha256 must equal the lock's); every lock value has the right shape
 #   5. (ONLINE=1, default in CI) every HF file a live script downloads resolves through the HF API (at the
 #      locked revision when there is one; its LFS sha256 must equal the lock's), every CivitAI version
 #      exists (and its SHA256 equals the lock's when CivitAI publishes one), every locked node commit exists.
@@ -52,7 +53,13 @@ for k in "${!HF_REVISION[@]}"; do
   [[ "${HF_REVISION[$k]}" =~ ^[0-9a-f]{40}$ ]] || bad "lock HF_REVISION[$k] is not a 40-hex revision"
 done
 for k in "${!MODEL_SHA256[@]}"; do
-  [ -n "${HF_MODELS[$k]+x}${CIVITAI_LORAS[$k]+x}" ] || bad "lock MODEL_SHA256[$k] has no registry entry"
+  if [ -f "comfy_nodes/$k" ]; then
+    # a file from this repo, fetched at CONFIG_REF and checked like a model: its sha256 must match the lock
+    got="$(sha256sum "comfy_nodes/$k" | cut -d' ' -f1)"
+    [ "$got" = "${MODEL_SHA256[$k]}" ] || bad "lock MODEL_SHA256[$k] is ${MODEL_SHA256[$k]}, comfy_nodes/$k is $got"
+  else
+    [ -n "${HF_MODELS[$k]+x}${CIVITAI_LORAS[$k]+x}" ] || bad "lock MODEL_SHA256[$k] has no registry entry"
+  fi
   [[ "${MODEL_SHA256[$k]}" =~ ^[0-9a-f]{64}$ ]] || bad "lock MODEL_SHA256[$k] is not a sha256"
 done
 
