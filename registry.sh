@@ -21,7 +21,6 @@ CUSTOM_NODES[kreareason]="https://github.com/shootthesound/ComfyUI-KreaReason"
 CUSTOM_NODES[krea2nag]="https://github.com/iljung1106/ComfyUI-Krea2-NAG"
 CUSTOM_NODES[negpip]="https://github.com/blue-pen5805/ComfyUI-krea2-negpip"
 CUSTOM_NODES[twostagesampler]="https://github.com/Auryg/Krea-2-Two-Stage-Sampler"
-CUSTOM_NODES[depthanythingv2]="https://github.com/kijai/ComfyUI-DepthAnythingV2"
 # sesquilsr removed: caused repeated hang in git index-pack at pod deploy; bislerp stays.
 
 # HF models — key: filename, value: full download URL
@@ -40,10 +39,6 @@ HF_MODELS[krea2_raw_fp8_scaled.safetensors]="https://huggingface.co/Comfy-Org/Kr
 HF_MODELS[minimax_h3_fl2va_pruned_int8_convrot.safetensors]="https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors"
 HF_MODELS[minimax_h3_ref2va_pruned_int8_convrot.safetensors]="https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors"
 HF_MODELS[museByStableYogi_v35Int8Extended.safetensors]="https://huggingface.co/skhaai/airebels/resolve/main/models/museByStableYogi_v35Int8Extended.safetensors"
-
-# Depth Anything V2 (kijai's ComfyUI-DepthAnythingV2 loader reads models/depthanything)
-HF_MODELS[depth_anything_v2_vitl_fp32.safetensors]="https://huggingface.co/Kijai/DepthAnythingV2-safetensors/resolve/main/depth_anything_v2_vitl_fp32.safetensors"
-HF_MODELS[depth_anything_v2_metric_hypersim_vitl_fp32.safetensors]="https://huggingface.co/Kijai/DepthAnythingV2-safetensors/resolve/main/depth_anything_v2_metric_hypersim_vitl_fp32.safetensors"
 
 # Checkpoints
 HF_MODELS[big_lust_v1.6.safetensors]="https://huggingface.co/skhaai/airebels/resolve/main/models/big_lust_v1.6.safetensors"
