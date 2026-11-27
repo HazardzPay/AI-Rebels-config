@@ -15,7 +15,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 fail=0; bad() { echo "FAIL: $*"; fail=1; }
-LIVE="scripts/krea2v2.sh scripts/krea2v2-seedvr2.sh scripts/krea2raw-seedvr2.sh scripts/seedvr.sh scripts/qwenimage21edit.sh scripts/h3.sh"
+LIVE="scripts/krea2raw-seedvr2.sh"  # the only live template (2026-11-27); the rest are in scripts/archive/
 
 for f in registry.sh lock.sh $LIVE; do
   [ -f "$f" ] || { [ "$f" = lock.sh ] && continue; bad "$f missing"; continue; }

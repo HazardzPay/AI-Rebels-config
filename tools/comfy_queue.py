@@ -69,6 +69,9 @@ Behaviour:
 - Adult check (task item 128, owner 2026-11-12): on the Mac (tools/prompt_lint.py beside this file) the dry run and
   --enqueue fail a run whose prompt or stage-2 prompt lacks 'adult woman' in its opening sentence, or whose negative
   does not end with ', child, teenager', unless the run carries "adult_exempt": "reason" (listed). Pod copies skip it.
+- Slot check (task item 166, owner 2026-11-21 17:00): on the Mac the dry run and --enqueue also fail a run whose
+  prompt or stage-2 prompt writes one slot twice (two makeup, expression or light sentences, or two jewellery sentences at
+  one place: prompt_lint.slot_repeat), unless the run carries "slot_repeat_exempt": "reason" (listed). Pod copies skip it.
 - Stage-2 prompt (2026-11-07, P07): when the export wires a CLIPTextEncode into the sampler's
   stage2_positive_optional input (tests/workflow_api_production_sh_gen_s2.json), that encoder gets the run's
   "stage2_prompt", or the run's prompt when the run has none (identical conditioning, so the render matches the
@@ -246,6 +249,7 @@ def resolve(run, defaults):
         nodes[nid] = {**nodes.get(nid, {}), **inp}
     r["nodes"] = nodes
     r["adult_exempt"] = run.get("adult_exempt")  # task item 128: an exact re-render of a render made before the adult wording
+    r["slot_repeat_exempt"] = run.get("slot_repeat_exempt")  # task item 166: resolve() dropped it, so the slot check never saw a run's exemption (2026-11-22)
     r["gate"] = run.get("gate")  # task item 131: the writer's garment and coverage, read by prompt_lint (Mac side)
     return r
 
@@ -673,7 +677,7 @@ def main():
             cast_fails = cast_lib.report(spec, quiet=True)
         except ImportError:
             print("cast check: cast_lib not here (pod copy); the Mac dry run carries it")
-    adult_fails = []
+    adult_fails, slot_fails = [], []
     if not (a.collect or a.cancel):  # task item 128 (owner 2026-11-12): 'adult woman' in the opening and ', child, teenager' ending the negative; Mac side, like the cast check
         try:
             import prompt_lint
@@ -681,6 +685,11 @@ def main():
             for lab, m in adult_fails: print(f"    ADULT FAIL {lab}: {m}")
             for lab, why in adult_ex: print(f"    adult exempt {lab}: {why}")
             print(f"adult check: {len(adult_fails)} fail(s), {len(adult_ex)} exempt run(s) (task item 128)")
+            if hasattr(prompt_lint, "slot_report"):  # task item 166: one sentence per slot
+                slot_fails, slot_ex = prompt_lint.slot_report(runs)
+                for lab, m in slot_fails: print(f"    SLOT FAIL {lab}: {m}")
+                for lab, why in slot_ex: print(f"    slot exempt {lab}: {why}")
+                print(f"slot check: {len(slot_fails)} fail(s), {len(slot_ex)} exempt run(s) (task item 166)")
         except ImportError:
             print("adult check: prompt_lint not here (pod copy); the Mac dry run carries it")
     for r in runs:
@@ -716,9 +725,11 @@ def main():
         print("dry run: nothing queued")
         if cast_fails: die(f"cast check: {cast_fails} fail(s); fix before any render (boot gate)")
         if adult_fails: die(f"adult check: {len(adult_fails)} fail(s); fix before any render (boot gate; task item 128)")
+        if slot_fails: die(f"slot check: {len(slot_fails)} fail(s); fix before any render (boot gate; task item 166)")
         return
     if cast_fails: die(f"cast check: {cast_fails} fail(s); nothing queued")
     if adult_fails: die(f"adult check: {len(adult_fails)} fail(s); nothing queued (task item 128)")
+    if slot_fails: die(f"slot check: {len(slot_fails)} fail(s); nothing queued (task item 166)")
     try:  # CAC (task item 64 (f)): each cast woman's used_in gets this definition, for the balanced rotation (Mac side only)
         if "cast_lib" in sys.modules and not (a.collect or a.cancel): print("cast use recorded:", ", ".join(sys.modules["cast_lib"].record_use(spec)) or "none")
     except Exception as e: print(f"cast use not recorded ({e})")

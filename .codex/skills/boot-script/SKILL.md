@@ -5,7 +5,8 @@ description: Create or update a ComfyUI RunPod setup script in this repository. 
 
 ## CURRENT PRACTICE — supersedes the template below
 
-Canonical reference: `scripts/krea2v2.sh` (and `scripts/krea2v2-seedvr2.sh`).
+Canonical reference: `scripts/krea2raw-seedvr2.sh`, the only live script (2026-11-27; the older
+`scripts/archive/krea2v2.sh` and `krea2v2-seedvr2.sh` were its pattern).
 The Step 3 template is the ORIGINAL from the upstream fork and is out of date.
 Match these deltas instead:
 
